@@ -1,0 +1,6 @@
+The additional data were scraped to provide holiday dates. 
+Ultimately, it was decided that using a `holidays` library is 
+more convenient for adding holiday information to the analyzed 
+dataset. However, this information was retained as it can serve 
+as a handy reference for holidays, observances, and other details, 
+such as clock changes in Belgium.
