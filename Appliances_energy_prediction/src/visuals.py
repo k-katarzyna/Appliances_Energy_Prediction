@@ -13,8 +13,8 @@ def histplots_grid(n_rows, n_cols, data, features = None):
     if features is None:
         features = [feature for feature in data.select_dtypes([int, float]).columns]
     
-    width = n_cols * 4
-    height = n_rows * 3
+    width = n_cols * 3.2
+    height = n_rows * 2.4
     
     fix, axes = plt.subplots(n_rows, n_cols, figsize = (width, height))
     
