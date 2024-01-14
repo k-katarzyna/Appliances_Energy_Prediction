@@ -100,13 +100,40 @@ def consumption_by_day_and_hour(data):
     order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     grouped_data = grouped_data.reindex(order)
 
-    plt.figure(figsize = (20, 5))
-    sns.heatmap(grouped_data, cmap="Blues",  cbar_kws = {"label": "[Wh]"})
-
-    plt.title("Average Appliances Usage by Day of Week and Hour")
-    plt.ylabel("Day of Week")
-    plt.yticks(ticks = np.arange(7) + .5, labels = [day[:3] for day in order])
-    plt.xlabel("Hour of Day")
-
-    plt.tight_layout()
+    daily_means = grouped_data.mean(axis=1).round().astype(int)
+    hourly_means = grouped_data.mean(axis=0).round().astype(int)
+    
+    fig = plt.figure(figsize=(20, 7), constrained_layout=True)
+    
+    gs = fig.add_gridspec(2, 2, width_ratios=[24, 1], height_ratios=[6, 0.8], 
+                          left=0.1, right=0.9, bottom=0.1, top=0.9,
+                          wspace=0.05, hspace=0.05)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax3 = fig.add_subplot(gs[1, 0])
+    
+    vmin = grouped_data.min().min()
+    vmax = grouped_data.max().max()
+    
+    sns.heatmap(grouped_data, cmap="Blues", ax=ax1, vmin=vmin, vmax=vmax, cbar=True)
+    ax1.set_title("Daily and Hourly Average Appliances Usage")
+    ax1.set_yticklabels([day[:3] for day in order])
+    ax1.set_xticklabels(range(0,24))
+    ax1.set_xlabel("Hour")
+    ax1.set_ylabel("Day of Week")
+    
+    sns.heatmap(daily_means.to_frame(), cmap="Blues", ax=ax2, vmin=vmin, vmax=vmax, cbar=False, annot = True, fmt="d")
+    ax2.set_title("Daily Means")
+    ax2.set_xticks([])
+    ax2.set_yticklabels([day[:3] for day in order])
+    ax2.set_xlabel("")
+    ax2.set_ylabel("")
+    
+    sns.heatmap(hourly_means.to_frame().T, cmap="Blues", ax=ax3, vmin=vmin, vmax=vmax, cbar=False, annot = True, fmt="d")
+    ax3.set_title("Hourly Means")
+    ax3.xaxis.tick_top()
+    ax3.set_xticklabels("")
+    ax3.set_xlabel("")
+    ax3.set_yticks([])
+    
     plt.show()
