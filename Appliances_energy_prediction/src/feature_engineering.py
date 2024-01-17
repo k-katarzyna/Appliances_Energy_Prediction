@@ -37,21 +37,6 @@ class DataEnhancer():
         self.data = pd.concat([self.data, new_frame], axis=1)
         return self
 
-    def add_lagged_features(self, target, lag, how_many, return_new=False):
-        
-        modified_data = self.data.copy()
-        
-        lagged_columns = [modified_data[target].shift(i * lag).rename(f"lag_{i}") 
-                          for i in range(1, how_many + 1)]
-        modified_data = pd.concat([modified_data] + lagged_columns, axis=1)
-        modified_data.dropna(inplace=True)
-    
-        if return_new:
-            return modified_data
-        else:
-            self.data = modified_data
-            return self
-
     def drop_features(self, features):
 
         self.data.drop(features, axis=1, inplace=True)
@@ -72,3 +57,41 @@ class DataEnhancer():
 
         self.data = pd.concat([self.data, new_frame], axis=1)
         return self
+
+    def add_lagged_features(self, lag, how_many, return_new=False):
+        
+        modified_data = self.data.copy()
+        
+        lagged_columns = [modified_data["Appliances"]
+                          .shift(i * lag)
+                          .rename(f"lag_{i}") 
+                          for i in range(1, how_many + 1)]
+        
+        modified_data = pd.concat([modified_data] + lagged_columns, axis=1)
+        modified_data.dropna(inplace=True)
+    
+        if return_new:
+            return modified_data
+        else:
+            self.data = modified_data
+            return self
+
+    def add_moving_average(self, windows, return_new=False):
+
+        modified_data = self.data.copy()
+        
+        moving_av_columns = [modified_data["Appliances"]
+                             .rolling(window=window_size).mean()
+                             .rename(f"moving_av_{window_size}") 
+                             for window_size in windows]
+        
+        modified_data = pd.concat([modified_data] + moving_av_columns, axis=1)
+        modified_data.dropna(inplace=True)
+        
+        if return_new:
+            return modified_data
+        else:
+            self.data = modified_data
+            return self
+
+        
