@@ -6,7 +6,7 @@ from holidays.countries import Belgium
 from holidays.constants import BANK, PUBLIC
 
 
-class DataEnhancer():
+class DataEnhancer:
 
     def __init__(self, data):
         self.data = data.copy()
@@ -44,18 +44,13 @@ class DataEnhancer():
 
     def mark_high_values(self):
 
-        grouped_by_hour = self.data.groupby(["hour"])["Appliances"]
-        grouped_by_hour_and_minute = self.data.groupby(["hour", "minute"])["Appliances"]
         usage = self.data.Appliances
+        very_high = usage >= np.quantile(usage, 0.95)
+        high = (usage < np.quantile(usage, 0.95)) & (usage > np.quantile(usage, 0.90))
 
-        new_frame = pd.DataFrame({
-            "is_high_usage": np.where(usage > np.quantile(usage, 0.9), 1, 0),
-            "mean_usage_by_hour": grouped_by_hour.transform("mean"),
-            "max_usage_by_hour": grouped_by_hour.transform("max"),
-            "max_usage_by_hour_minute": grouped_by_hour_and_minute.transform("max")
-        })
-
-        self.data = pd.concat([self.data, new_frame], axis=1)
+        self.data["is_high_usage"] = (np.where(very_high, 2,
+                                               np.where(high, 1, 0))
+                                     )
         return self
 
     def add_lagged_features(self, lag, how_many, return_new=False):
@@ -68,10 +63,9 @@ class DataEnhancer():
                           for i in range(1, how_many + 1)]
         
         modified_data = pd.concat([modified_data] + lagged_columns, axis=1)
-        modified_data.dropna(inplace=True)
     
         if return_new:
-            return modified_data
+            return modified_data.dropna()
         else:
             self.data = modified_data
             return self
@@ -89,9 +83,33 @@ class DataEnhancer():
         modified_data.dropna(inplace=True)
         
         if return_new:
-            return modified_data
+            return modified_data.dropna()
         else:
             self.data = modified_data
             return self
+
+    def add_moving_sum(self, windows, return_new=False):
+
+        modified_data = self.data.copy()
+        
+        moving_sum_columns = [modified_data["Appliances"]
+                             .rolling(window=window_size).sum()
+                             .rename(f"moving_sum_{window_size}") 
+                             for window_size in windows]
+        
+        modified_data = pd.concat([modified_data] + moving_sum_columns, axis=1)
+        modified_data.dropna(inplace=True)
+        
+        if return_new:
+            return modified_data.dropna()
+        else:
+            self.data = modified_data
+            return self
+
+    def dropna(self):
+
+        self.data.dropna(inplace=True)
+        return self
+
 
         
