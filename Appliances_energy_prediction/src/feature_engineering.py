@@ -49,18 +49,17 @@ class DataEnhancer:
         high = (usage < np.quantile(usage, 0.95)) & (usage > np.quantile(usage, 0.90))
 
         self.data["is_high_usage"] = (np.where(very_high, 2,
-                                               np.where(high, 1, 0))
-                                     )
+                                               np.where(high, 1, 0)))
         return self
 
-    def add_lagged_features(self, lag, how_many, return_new=False):
+    def add_lagged_features(self, lags, return_new=False):
         
         modified_data = self.data.copy()
         
         lagged_columns = [modified_data["Appliances"]
-                          .shift(i * lag)
-                          .rename(f"lag_{i}") 
-                          for i in range(1, how_many + 1)]
+                          .shift(lag)
+                          .rename(f"lag_{lag}") 
+                          for lag in lags]
         
         modified_data = pd.concat([modified_data] + lagged_columns, axis=1)
     
@@ -110,6 +109,5 @@ class DataEnhancer:
 
         self.data.dropna(inplace=True)
         return self
-
-
+        
         

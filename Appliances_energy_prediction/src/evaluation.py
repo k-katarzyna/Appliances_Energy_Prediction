@@ -4,38 +4,55 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, mean_absolute_error
+from sklearn.model_selection import TransformedTargetRegressor
+from sklearn.linear_model imort LinearRegression
+
+from .utils import return_train_test_data
 
 plt.rcParams["font.size"] = 14.0
 plt.rcParams["axes.spines.top"] = False
 plt.rcParams["axes.spines.right"] = False
 
 
-def prediction_benchmarks(data, X_test, y_test):
+def prediction_benchmarks(data, n_test):
 
-    n_test = len(y_test)
-    X_train_data = data.iloc[:-n_test]
-    means = X_train_data.groupby(["day_of_week", "hour", "minute"])["Appliances"].mean()
-    historical_means = X_test.apply(lambda row:
+    train, test = return_train_test_data(data, n_test)
+    
+    means = train.groupby(["day_of_week", "hour", "minute"])["Appliances"].mean()
+    historical_means = test.apply(lambda row:
                                     means.loc[(row["day_of_week"], row["hour"], row["minute"])], 
                                     axis=1)
-    # day_before = enhanced_data.Appliances_24.iloc[-n_test:]
-    week_before = data.Appliances_24.shift(1008).iloc[-n_test:]
     
-    plt.figure(figsize=(20,6))
-    plt.plot(X_test.index, y_test, label="y_test")
-    plt.plot(X_test.index, week_before, 
-             label=f"week before: MAPE {mean_absolute_percentage_error(y_test, week_before):.2f}, "
-                   f"MAE {mean_absolute_error(y_test, week_before):.0f}, "
-                   f"RMSE {mean_squared_error(y_test, week_before, squared=False):.0f}")
-    plt.plot(X_test.index, historical_means, 
-             label=f"historical means: MAPE {mean_absolute_percentage_error(y_test, historical_means):.2f}, "
-                   f"MAE {mean_absolute_error(y_test, historical_means):.0f}, "
-                   f"RMSE {mean_squared_error(y_test, historical_means, squared=False):.0f}")
+    week_before = data.Appliances_24.shift(144*7).iloc[-n_test:]
+
+    X_train, X_test, y_train, y_test = return_train_test_data(data, n_test, xy=True, ohe=True)
+    model = TransformedTargetRegressor(LinearRegression(),
+                                       func=np.log, inverse_func=np.exp)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
     
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(20,12), sharex=True)
+
+    for ax, title, preds in zip((ax1, ax2, ax3),
+                                ("Week before data", "Historical means", "Linear regression prediction"),
+                                (week_before, historical_means, y_pred)):
+        ax.plot(test.index, y_test, label="y_test", color="tab:blue")
+        ax.plot(test.index, preds, label=title, color="tab:orange")
+
+        mape = mean_absolute_percentage_error(y_test, preds)
+        mae = mean_absolute_error(y_test, preds)
+        rmse = mean_squared_error(y_test, preds, squared=False)
+        
+        ax.legend([
+            "y_test",
+            f"{' '.join(title.lower().split(' ')[0:2])}: MAPE {mape:.2f}, "
+            f"MAE {mae:.0f}, "
+            f"RMSE {rmse:.0f}"
+        ])
+        ax.set_title(f"{title} as a benchmark")
+        
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%a"))
-    plt.legend()
-    plt.title("Prediction benchmarks")
     plt.tight_layout()
     plt.show()
 
@@ -64,9 +81,9 @@ def diagnose_errors(y_test, y_pred):
     plt.show()
 
 
-def evaluate_model(X_train, X_test, y_train, y_test, model):
+def evaluate_model(X_train, X_test, y_train, y_test, model, **kwargs):
     
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, **kwargs)
     y_pred = model.predict(X_test)
     mape = mean_absolute_percentage_error(y_test, y_pred)
     mse = mean_squared_error(y_test, y_pred, squared=False)
