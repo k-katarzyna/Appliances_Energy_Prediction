@@ -33,7 +33,7 @@ class DataEnhancer:
 
     def __init__(self, data):
         """
-        Initializes the DataEnhancer with the provided dataset.
+        Initialize the DataEnhancer with the provided dataset.
 
         Parameters:
             data (pd.DataFrame): A DataFrame to be enhanced.
@@ -42,7 +42,7 @@ class DataEnhancer:
     
     def _assign_time_of_day(self, hour):   
         """
-        Assigns a part of the day based on the given hour.
+        Assign a part of the day based on the given hour.
 
         Parameters:
             hour (int): The hour of the day.
@@ -58,7 +58,7 @@ class DataEnhancer:
 
     def add_datetime_features(self):
         """
-        Adds various datetime related features such as day of the week, hour,
+        Add various datetime related features such as day of the week, hour,
         minute, time of day, week of the year, day of the year, holiday status
         and weekend status.
 
@@ -83,7 +83,7 @@ class DataEnhancer:
 
     def drop_features(self, features):
         """
-        Drops specified features from the dataset.
+        Drop specified features from the dataset.
 
         Parameters:
             features (list of str): List of column names to be dropped.
@@ -96,7 +96,7 @@ class DataEnhancer:
 
     def mark_high_values(self):
         """
-        Marks high value records in the dataset based on predefined criteria.
+        Mark high value records in the dataset based on predefined criteria.
 
         Returns:
             DataEnhancer: The instance itself for method chaining.
@@ -111,7 +111,7 @@ class DataEnhancer:
 
     def add_lagged_features(self, lags, return_new=False):
         """
-        Adds lagged features to the dataset.
+        Add lagged features to the dataset.
 
         Parameters:
             lags (list of int): The list of lag periods.
@@ -139,7 +139,7 @@ class DataEnhancer:
 
     def add_moving_average(self, windows, return_new=False):
         """
-        Adds moving average calculations to the dataset.
+        Add moving average calculations to the dataset.
 
         Parameters:
             windows (list of int): The list of window sizes for moving averages.
@@ -168,7 +168,7 @@ class DataEnhancer:
 
     def add_moving_sum(self, windows, return_new=False):
         """
-        Adds moving sum calculations to the dataset.
+        Add moving sum calculations to the dataset.
 
         Parameters:
             windows (list of int): The list of window sizes for moving sums.
@@ -197,7 +197,7 @@ class DataEnhancer:
 
     def dropna(self):
         """
-        Drops rows with missing values from the dataset.
+        Drop rows with missing values from the dataset.
 
         Returns:
             DataEnhancer: The instance itself for method chaining.
@@ -224,7 +224,7 @@ class AnomaliesMarker(BaseEstimator, TransformerMixin):
     
     def __init__(self, **kwargs):
         """
-        Initializes the AnomaliesMarker with an Isolation Forest model.
+        Initialize the AnomaliesMarker with an Isolation Forest model.
 
         Parameters:
             **kwargs: Arbitrary keyword arguments that are passed to the IsolationForest
@@ -234,7 +234,7 @@ class AnomaliesMarker(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
         """
-        Fits the Isolation Forest model to the dataset.
+        Fit the Isolation Forest model to the dataset.
 
         Parameters:
             X (pd.DataFrame): The input samples.
@@ -248,7 +248,7 @@ class AnomaliesMarker(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         """
-        Applies the fitted Isolation Forest model to the dataset and marks anomalies.
+        Apply the fitted Isolation Forest model to the dataset and mark anomalies.
 
         Anomalies are marked in a new column named 'anomalies', with 1 indicating
         an anomaly and 0 indicating normal.
