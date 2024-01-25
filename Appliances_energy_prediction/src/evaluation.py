@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, mean_absolute_error
-from sklearn.model_selection import TransformedTargetRegressor
-from sklearn.linear_model imort LinearRegression
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LinearRegression
 
 from .utils import return_train_test_data
 
@@ -15,7 +17,26 @@ plt.rcParams["axes.spines.right"] = False
 
 
 def prediction_benchmarks(data, n_test):
+    """
+    Generate and plot prediction benchmarks for appliance energy usage forecasting.
 
+    This function divides the provided dataset into training and test sets, then
+    creates three sets of predictions:
+    1. Data from the week before,
+    2. Historical means based on day of the week, hour, and minute,
+    3. Predictions from a simple linear regression model.
+
+    The function plots these predictions along with the actual test data for visual
+    comparison and calculates root mean squared error (RMSE), mean absolute error (MAE),
+    and mean absolute percentage error (MAPE) for each dummy prediction.
+
+    Parameters:
+        data (pd.DataFrame): The dataset containing appliance energy usage and other features.
+        n_test (int): The number of samples to include in the test set.
+
+    Returns:
+        None: The function outputs a matplotlib plot and does not return any value.
+    """
     train, test = return_train_test_data(data, n_test)
     
     means = train.groupby(["day_of_week", "hour", "minute"])["Appliances"].mean()
@@ -25,16 +46,24 @@ def prediction_benchmarks(data, n_test):
     
     week_before = data.Appliances_24.shift(144*7).iloc[-n_test:]
 
-    X_train, X_test, y_train, y_test = return_train_test_data(data, n_test, xy=True, ohe=True)
-    model = TransformedTargetRegressor(LinearRegression(),
-                                       func=np.log, inverse_func=np.exp)
+    X_train, X_test, y_train, y_test = return_train_test_data(data,
+                                                              n_test,
+                                                              xy=True,
+                                                              ohe_drop_first=True)
+    
+    model = TransformedTargetRegressor(make_pipeline(MinMaxScaler(),
+                                                     LinearRegression()),
+                                       func=np.log,
+                                       inverse_func=np.exp)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(20,12), sharex=True)
+    fig.suptitle("Prediction benchmarks", fontsize=16)
 
     for ax, title, preds in zip((ax1, ax2, ax3),
-                                ("Week before data", "Historical means", "Linear regression prediction"),
+                                ("week before", "historical means",
+                                 "linear regression"),
                                 (week_before, historical_means, y_pred)):
         ax.plot(test.index, y_test, label="y_test", color="tab:blue")
         ax.plot(test.index, preds, label=title, color="tab:orange")
@@ -45,11 +74,10 @@ def prediction_benchmarks(data, n_test):
         
         ax.legend([
             "y_test",
-            f"{' '.join(title.lower().split(' ')[0:2])}: MAPE {mape:.2f}, "
+            f"{title}: RMSE {rmse:.0f}, "
             f"MAE {mae:.0f}, "
-            f"RMSE {rmse:.0f}"
+            f"MAPE {mape:.2f}"
         ])
-        ax.set_title(f"{title} as a benchmark")
         
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%a"))
@@ -58,7 +86,23 @@ def prediction_benchmarks(data, n_test):
 
 
 def diagnose_errors(y_test, y_pred):
+    """
+    Visualize the prediction errors in multiple ways to diagnose model performance.
 
+    This function creates four plots to help in understanding the nature of errors
+    made by a prediction model:
+    1. Scatter plot of predicted values vs actual values.
+    2. Scatter plot of error terms against their index.
+    3. Scatter plot of error terms against actual values.
+    4. Histogram of the error distribution.
+
+    Parameters:
+        y_test (array-like): The actual values.
+        y_pred (array-like): The predicted values from the model.
+
+    Returns:
+        None: The function plots the graphs using matplotlib and does not return any value.
+    """
     fig, ax = plt.subplots(1, 4, figsize=(20, 4))
     
     ax[0].scatter(y_test, y_pred)
@@ -68,11 +112,11 @@ def diagnose_errors(y_test, y_pred):
     errors = y_test - y_pred
     ax[1].scatter(range(len(errors)), errors)
     ax[1].hlines(0, 2000, 0, color="r")
-    ax[1].set_title("res ~ i")
+    ax[1].set_title("errors ~ i")
     
     ax[2].scatter(y_test, errors)
     ax[2].hlines(0, 2000, 0, color="r")
-    ax[2].set_title("res ~ y_test")
+    ax[2].set_title("errors ~ y_test")
     
     ax[3].hist(errors)
     ax[3].set_title("errors")
@@ -81,20 +125,38 @@ def diagnose_errors(y_test, y_pred):
     plt.show()
 
 
-def evaluate_model(X_train, X_test, y_train, y_test, model, **kwargs):
-    
-    model.fit(X_train, y_train, **kwargs)
+def evaluate_model(X_train, X_test, y_train, y_test, model):
+    """
+    Evaluate a given model's performance on test data and visualize the results.
+
+    This function uses the provided model to predict values based on X_test, then
+    calculates mean absolute percentage error (MAPE), root mean squared error (RMSE)
+    and mean absolute error (MAE). It plots the actual vs predicted values and also
+    calls the diagnose_errors function to further analyze the prediction errors.
+
+    Parameters:
+        X_train (pd.DataFrame): The training data features.
+        X_test (pd.DataFrame): The test data features.
+        y_train (array-like): The actual values for the training data.
+        y_test (array-like): The actual values for the test data.
+        model (fitted on train data ML model object): The model to be evaluated.
+
+    Returns:
+        None: This function plots the evaluation results and does not return any value.
+    """
+    name = model.regressor_.named_steps["model"].__class__.__name__
     y_pred = model.predict(X_test)
     mape = mean_absolute_percentage_error(y_test, y_pred)
     mse = mean_squared_error(y_test, y_pred, squared=False)
     mae = mean_absolute_error(y_test, y_pred)
     
-    plt.figure(figsize=(20,6))
+    plt.figure(figsize=(20,5))
     plt.plot(X_test.index, y_test)
     plt.plot(X_test.index, y_pred,
              color="red",
-             label=f"model prediction: MAPE {mape:.3f}, RMSE {mse:.0f}, MAE {mae:.0f}")
+             label=f"MAPE {mape:.3f}, RMSE {mse:.0f}, MAE {mae:.0f}")
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%a'))
+    plt.title(f"Best {name}'s performance (on test data)")
     plt.legend()
     plt.show()
     print("\n\n")
@@ -102,15 +164,28 @@ def evaluate_model(X_train, X_test, y_train, y_test, model, **kwargs):
 
 
 def time_series_split(tscv, X_train):
+    """
+    Visualize the training and test splits created by a time series cross-validator.
+
+    This function takes a time series cross-validator object and the training data,
+    then generates a visualization of the training and test observation ranges for each
+    split. The visualization helps in understanding how the data is partitioned over time.
     
+    Parameters:
+        tscv (TimeSeriesSplit or similar): A time series cross-validator object.
+        X_train (pd.DataFrame or array-like): The training dataset.
+
+    Returns:
+        None: This function plots the time series splits and does not return any value.
+    """    
     observation_ranges_train = []
     observation_ranges_test = []
     for train_index, test_index in tscv.split(X_train):
         observation_ranges_train.append((train_index.min(), train_index.max() + 1))
         observation_ranges_test.append((test_index.min(), test_index.max() + 1))
     
-    plt.figure(figsize=(10, 4))
-    bar_width = 0.4
+    plt.figure(figsize=(8, 3))
+    bar_width = 0.3
     plt.barh(
         range(len(observation_ranges_train)),
         [end - start for start, end in observation_ranges_train],
@@ -130,7 +205,7 @@ def time_series_split(tscv, X_train):
         [idx for idx in range(len(observation_ranges_train))],
         [f"Split {i + 1}" for i in range(len(observation_ranges_train))]
     )
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
+    plt.xticks(fontsize=9)
+    plt.yticks(fontsize=9)
     plt.legend()
     plt.show()
