@@ -63,8 +63,12 @@ def histplots_grid(n_rows, n_cols, data, features=None):
 
     plt.tight_layout()    
     plt.show()
-    
-    
+
+
+def scale_annotation(value):
+    return f"{value/1000:.1f}"
+
+
 def energy_consumption_all_time(appliances):
     """
     Visualize the average daily energy consumption of appliances over time.
@@ -85,13 +89,12 @@ def energy_consumption_all_time(appliances):
     Returns:
         None: This function plots the heatmaps and does not return any value.
     """
-    daily_data = appliances.resample("D").mean()
-    heatmap_data = (daily_data
-                    .groupby([daily_data.index.day,
-                              daily_data.index.month])
-                    .mean()
+    heatmap_data = (appliances.groupby([appliances.index.day,
+                                        appliances.index.month])
+                    .sum()
                     .unstack(level=0))
-    monthly_means = heatmap_data.mean(axis=1).to_frame("mean").astype(int)
+    
+    monthly_means = heatmap_data.mean(axis=1).to_frame()
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 4),
                                    gridspec_kw={"width_ratios": [30, 1]})
@@ -100,10 +103,11 @@ def energy_consumption_all_time(appliances):
     vmax = heatmap_data.max().max()
     months = ["Jan", "Feb", "Mar", "Apr", "May"]
 
-    sns.heatmap(heatmap_data, cmap="Blues", ax=ax1, vmin=vmin, vmax=vmax,
+    sns.heatmap(heatmap_data, cmap="Blues",
+                ax=ax1, vmin=vmin, vmax=vmax,
                 cbar_kws={"label": "[Wh]"})
-    ax1.set_title("Daily Average Appliances Usage")
-    ax1.set_xlabel("Day of Month")
+    ax1.set_title("Daily Appliances Usage", fontsize=18)
+    ax1.set_xlabel("Day of month")
     ax1.set_ylabel("Month")
     ax1.set_yticklabels(months)
     ax1.set_xticks(np.arange(31) + .5)
@@ -112,8 +116,9 @@ def energy_consumption_all_time(appliances):
     sns.heatmap(monthly_means, ax=ax2,
                 vmin=vmin, vmax=vmax,
                 cmap="Blues", cbar=False,
-                annot=True, fmt="d")
-    ax2.set_title("Monthly Means")
+                annot=np.vectorize(scale_annotation)(monthly_means.values),
+                fmt="s")
+    ax2.set_title("Daily means [KWh]")
     ax2.set_ylabel(None)
     ax2.set_yticklabels(months, rotation = 0)
     ax2.set_xticks([])
@@ -163,6 +168,75 @@ def energy_vs_lights_plot(appliances, lights):
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax2.legend(lines + lines2, labels + labels2, loc="best")
     plt.show()
+
+
+def time_series_decomposition(result_day, result_week):
+    """
+    Visualize the time series decomposition into trend, seasonality, and residuals.
+
+    This function plots the trend, seasonality, and residuals of a time series data.
+    It uses the results from two different decompositions - one at a daily frequency
+    and another at a weekly frequency. The function creates four subplots: daily trend,
+    weekly trend, weekly seasonality, and weekly residuals.
+
+    Parameters:
+        result_day (statsmodels.tsa.seasonal.DecomposeResult): The decomposition result
+            at a daily frequency.
+        result_week (statsmodels.tsa.seasonal.DecomposeResult): The decomposition result
+            at a weekly frequency.
+
+    Returns:
+        None: This function plots the decomposition results and does not return any value.
+    """   
+    trend_144 = result_day.trend
+    trend_1008 = result_week.trend
+    seasonal = result_week.seasonal
+    residual = result_week.resid
+    
+    fig, axes = plt.subplots(4, 1, figsize=(20, 12), sharex=True)
+    fig.suptitle("Time series decomposition", fontsize=20)
+    
+    sns.lineplot(data=trend_144, ax=axes[0])
+    axes[0].legend(["Trend (day)"])
+    
+    sns.lineplot(data=trend_1008, ax=axes[1])
+    axes[1].legend(["Trend (week)"])
+    
+    sns.lineplot(data=seasonal, ax=axes[2])
+    axes[2].legend(["Seasonality (week)"])
+    
+    sns.scatterplot(data=residual, ax=axes[3])
+    axes[3].legend(["Residual (week)"])
+    
+    plt.tight_layout()
+    plt.show()
+
+
+def acf_pacf(time_series, lags):
+    """
+    Plot the Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF)
+    of a time series.
+
+    This function is used to analyze the autocorrelation and partial autocorrelation
+    of a time series data. It helps in identifying the lagged relationships and is useful
+    in time series forecasting model selection.
+
+    Parameters:
+        time_series (pd.Series): The time series data for which ACF and PACF are to be plotted.
+        lags (int): The number of lags to be included in the ACF and PACF plots.
+
+    Returns:
+        None: This function plots the ACF and PACF and does not return any value.
+    """    
+    plt.figure(figsize=(20, 5))
+    plt.subplot(121)
+    plot_acf(time_series, ax=plt.gca(), lags=lags)
+    plt.title(f"ACF for {time_series.name}")
+    plt.subplot(122)
+    plot_pacf(time_series, ax=plt.gca(), lags=lags)
+    plt.title(f"PACF for {time_series.name}")
+    plt.tight_layout()
+    plt.show()
     
     
 def consumption_by_day_and_hour(data):
@@ -184,13 +258,14 @@ def consumption_by_day_and_hour(data):
     """
     grouped_data = (data
                     .groupby(["day_of_week", "hour"])["Appliances"]
-                    .mean()
+                    .sum()
                     .unstack())
+    
     order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     grouped_data = grouped_data.reindex(order)
 
-    daily_means = grouped_data.mean(axis=1).round().astype(int)
-    hourly_means = grouped_data.mean(axis=0).round().astype(int)
+    daily_means = grouped_data.mean(axis=1).to_frame()
+    hourly_means = grouped_data.mean(axis=0).to_frame().T
     
     fig = plt.figure(figsize=(20, 7), constrained_layout=True)
     
@@ -209,27 +284,29 @@ def consumption_by_day_and_hour(data):
     vmax = grouped_data.max().max()
     
     sns.heatmap(grouped_data, cmap="Blues", ax=ax1, vmin=vmin, vmax=vmax, cbar=True)
-    ax1.set_title("Daily and Hourly Average Appliances Usage")
+    ax1.set_title("Daily and Hourly Average Appliances Usage [Wh]")
     ax1.set_yticklabels([day[:3] for day in order])
     ax1.set_xticklabels(range(0,24))
     ax1.set_xlabel("Hour")
     ax1.set_ylabel("Day of Week")
     
-    sns.heatmap(daily_means.to_frame(),
+    sns.heatmap(daily_means,
                 ax=ax2, vmin=vmin, vmax=vmax,
                 cmap="Blues", cbar=False,
-                annot = True, fmt="d")
-    ax2.set_title("Daily Means")
+                annot=np.vectorize(scale_annotation)(daily_means.values),
+                fmt="s")
+    ax2.set_title("Daily Means [KWh]")
     ax2.set_xticks([])
     ax2.set_yticklabels([day[:3] for day in order])
     ax2.set_xlabel("")
     ax2.set_ylabel("")
     
-    sns.heatmap(hourly_means.to_frame().T,
+    sns.heatmap(hourly_means,
                 ax=ax3, vmin=vmin, vmax=vmax,
                 cmap="Blues", cbar=False,
-                annot = True, fmt="d")
-    ax3.set_title("Hourly Means")
+                annot=np.vectorize(scale_annotation)(hourly_means.values),
+                fmt="s")
+    ax3.set_title("Hourly Means [KWh]")
     ax3.xaxis.tick_top()
     ax3.set_xticklabels("")
     ax3.set_xlabel("")
@@ -256,7 +333,7 @@ class WeeklyDataVisualizer:
         plot_many_weeks(weeks, columns, single_plot=True, **kwargs): Plots line graphs for
             specified columns across multiple weeks.
         plot_heatmap(weeks, col, **kwargs): Generates heatmaps for a specified column across
-        multiple weeks.
+            multiple weeks.
     """
     
     def __init__(self, data):
@@ -285,7 +362,7 @@ class WeeklyDataVisualizer:
             return week_data
         return None
 
-    def _plot_week_data(self, ax, week_data, week, col, label, **kwargs):
+    def _plot_week_data(self, ax, week, col, label, sharex_using_weekdays=False, **kwargs):
         """
         Plot the data of a specific week on the provided axes.
 
@@ -295,23 +372,32 @@ class WeeklyDataVisualizer:
             week (int): The week number.
             col (str): The column name of the data to be plotted.
             label (str): The label for the plot.
-            **kwargs: Additional keyword arguments for the plot.
-        """        
-        day_offset = week_data.index[0].weekday()
-        time_offset = (day_offset * 24 * 6
-                       + week_data.index[0].hour * 6
-                       + week_data.index[0].minute // 10)
-        full_week_x_axis = pd.date_range(start="2016-01-10",
-                                         periods=7*24*6,
-                                         freq="10T")
-        adjusted_index = full_week_x_axis[time_offset:time_offset + len(week_data)]
-        week_data_for_plot = week_data.copy()
-        week_data_for_plot.set_index(adjusted_index, inplace=True)
-        sns.lineplot(ax=ax,
-                     x=week_data_for_plot.index,
-                     y=week_data_for_plot[col],
-                     label=label,
-                     **kwargs)
+            sharex_using_weekdays (bool): If True, use weekdays as the shared x-axis.
+            **kwargs: Additional keyword arguments for the seaborn lineplot.
+        """
+        week_data = self._get_week_data(week, col)
+        if week_data is not None:
+            
+            day_offset = week_data.index[0].weekday()
+            time_offset = (day_offset * 24 * 6
+                           + week_data.index[0].hour * 6
+                           + week_data.index[0].minute // 10)
+            
+            if sharex_using_weekdays:
+                start_date = "2016-01-10"
+            else:
+                start_date = week_data.index[0].date()
+                
+            full_week_x_axis = pd.date_range(start=start_date,
+                                             periods=7*24*6,
+                                             freq="10T")
+            adjusted_index = full_week_x_axis[time_offset:time_offset + len(week_data)]
+            
+            sns.lineplot(ax=ax,
+                         x=adjusted_index,
+                         y=week_data[col],
+                         label=label,
+                         **kwargs)
 
     def plot_one_week(self, week, columns, **kwargs):
         """
@@ -320,7 +406,7 @@ class WeeklyDataVisualizer:
         Parameters:
             week (int): The week number to plot.
             columns (list): A list of column names to be plotted.
-            **kwargs: Additional keyword arguments for the plot.
+            **kwargs: Additional keyword arguments for the seaborn lineplot.
         """        
         if all(isinstance(col, list) for col in columns):
             subsets = columns
@@ -334,14 +420,12 @@ class WeeklyDataVisualizer:
 
         for i, subset in enumerate(subsets):
             for col in subset:
-                week_data = self._get_week_data(week, col)
-                if week_data is not None:
-                    self._plot_week_data(axes[i], week_data,
-                                         week, col,
-                                         label=col,
-                                         **kwargs)
-
+                self._plot_week_data(axes[i],
+                                     week, col,
+                                     label=col,
+                                     **kwargs)
             axes[i].set_title(f"Week {week}, {' & '.join(subset)}")
+            axes[i].set_xlabel("")
             axes[i].legend()
 
         plt.tight_layout()
@@ -356,7 +440,7 @@ class WeeklyDataVisualizer:
             columns (list): A list of column names to be plotted.
             single_plot (bool): If True, all weeks are plotted on a single graph
                 for each column.
-            **kwargs: Additional keyword arguments for the plot.
+            **kwargs: Additional keyword arguments for the seaborn lineplot.
         """
         if single_plot:
             fig, axes = plt.subplots(len(columns), 1,
@@ -365,18 +449,18 @@ class WeeklyDataVisualizer:
             axes = axes.flatten()
 
             for i, col in enumerate(columns):
+                ax = axes[i]
                 for week in weeks:
-                    week_data = self._get_week_data(week, col)
-                    if week_data is not None:
-                        self._plot_week_data(axes[i], week_data,
-                                             week, col,
-                                             label=f"Week {week}",
-                                             **kwargs)
-                axes[i].set_title(col)
-                axes[i].legend()
-                axes[i].xaxis.set_major_locator(mdates.DayLocator())
-                axes[i].xaxis.set_major_formatter(mdates.DateFormatter("%a"))
-
+                    self._plot_week_data(axes[i],
+                                         week, col,
+                                         label=f"Week {week}",
+                                         sharex_using_weekdays=True,
+                                         **kwargs)
+                ax.set_xlabel("")
+                ax.set_title(col)
+                ax.legend()
+                ax.xaxis.set_major_locator(mdates.DayLocator())
+                ax.xaxis.set_major_formatter(mdates.DateFormatter("%a"))
         else:
             total_plots = len(weeks) * len(columns)
             fig, axes = plt.subplots(total_plots, 1,
@@ -385,16 +469,13 @@ class WeeklyDataVisualizer:
             axes = axes.flatten()
 
             for i, (week, col) in enumerate(product(weeks, columns)):
-                week_data = self._get_week_data(week, col)
-                if week_data is not None:
-                    self._plot_week_data(axes[i], week_data,
-                                         week, col,
-                                         label=f"Week {week}",
-                                         **kwargs)
-                    
+                self._plot_week_data(axes[i],
+                                     week, col,
+                                     label=f"Week {week}",
+                                     **kwargs)
+                axes[i].set_xlabel("")
                 axes[i].set_title(f"Week {week}, {col}")
                 axes[i].legend()
-
         plt.tight_layout()
         plt.show()
 
@@ -409,10 +490,11 @@ class WeeklyDataVisualizer:
         """
         for week in weeks:
             week_data = self._get_week_data(week, col)
-            grouped_data = (week_data
-                            .groupby(["day_of_week", "hour"])["Appliances"]
-                            .mean()
-                            .unstack())
+            if week_data is not None:
+                grouped_data = (week_data
+                                .groupby(["day_of_week", "hour"])[col]
+                                .sum()
+                                .unstack())
             order = ["Monday", "Tuesday", "Wednesday", "Thursday",
                      "Friday", "Saturday", "Sunday"]
             grouped_data = grouped_data.reindex(order)
@@ -423,6 +505,8 @@ class WeeklyDataVisualizer:
                         cmap=kwargs.get("cmap", "Blues"),
                         **kwargs)
             plt.title(f"Week {week}, {col}")
+            plt.yticks(fontsize=10)
+            plt.xticks(fontsize=10)
             plt.ylabel("Day of week")
             plt.xlabel("Hour of day")
         plt.show()
