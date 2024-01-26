@@ -1,100 +1,20 @@
-COLLECTION METHODOLOGY
-The data set is at 10 min for about 4.5 months. The house temperature and humidity conditions were monitored with a ZigBee wireless sensor network. Each wireless node transmitted the temperature and humidity conditions around 3.3 min. Then, the wireless data was averaged for 10 minutes periods. The energy data was logged every 10 minutes with m-bus energy meters. Weather from the nearest airport weather station (Chievres Airport, Belgium) was downloaded from a public data set from Reliable Prognosis (rp5.ru), and merged together with the experimental data sets using the date and time column. Two random variables have been included in the data set for testing the regression models and to filter out non predictive attributes (parameters). For more information about the house, data collection, R scripts and figures, please refer to the paper and to the following github repository: [Web Link](https://github.com/LuisM78/Appliances-energy-prediction-data)
+## The goal
 
-https://archive.ics.uci.edu/ml/datasets/Appliances+energy+prediction
-https://www.kaggle.com/datasets/sohommajumder21/appliances-energy-prediction-data-set
+This project aims to develop a predictive model using multivariate time series analysis, focusing on household energy consumption. The model will utilize historical data on aggregated appliances' energy usage, temperature, humidity, and weather conditions to forecast 24-hour energy demand.
 
-About Dataset
-Context
-Experimental data used to create regression models of appliances energy use in a low energy building.
+This approach differs from the original study [1], which explored various predictors for energy demand from which the dataset was sourced. The model could potentially contribute to the enhancement of Home Energy Management Systems (HEMS) by optimizing energy consumption, adapting to variable energy tariffs and integrating renewable energy sources like photovoltaics. Incorporation of residents' demand routines could make predictions more personalized. Such optimization is particularly relevant for smart homes, aiming to balance energy efficiency with user convenience, while also reducing their carbon footprint. [3]
 
-Content
-Data Set Characteristics:
+The primary challenge lies in the limited dataset duration (4.5 months), which may affect the ability to predict seasonal variations in energy usage, thereby impacting the reliability and predictability of the model's forecasts.
 
-Multivariate, Time-Series, Regression
 
-Number of Instances(Rows):
+## The dataset
 
-19735
+The dataset, documenting appliance energy usage in a low-energy building, spans approximately 4.5 months. It records the energy consumption of appliances at 10-minute intervals. This dataset includes detailed information on the temperature and humidity levels in various rooms of the house, as well as outside, alongside data on lighting energy usage. Additionally, weather data from the nearest weather station has been integrated with the experimental data, synchronized by date and time. To evaluate regression models and pinpoint non-predictive attributes, the dataset also incorporates two random variables. [1, 2]
 
-Number of Attributes(Columns):
 
-29
+## References
 
-Associated Tasks:
-
-Regression
-
-Source:
-
-Luis Candanedo, luismiguel.candanedoibarra '@' umons.ac.be, University of Mons (UMONS).
-
-Data Set Information:
-Given in Metadata tab about the sources and collection methodology.
-
-Attribute Information:
-date time year-month-day hour:minute:second
-
-Appliances, energy use in Wh (target variable for prediction)
-
-lights, energy use of light fixtures in the house in Wh
-
-T1, Temperature in kitchen area, in Celsius
-
-RH_1, Humidity in kitchen area, in %
-
-T2, Temperature in living room area, in Celsius
-
-RH_2, Humidity in living room area, in %
-
-T3, Temperature in laundry room area
-
-RH_3, Humidity in laundry room area, in %
-
-T4, Temperature in office room, in Celsius
-
-RH_4, Humidity in office room, in %
-
-T5, Temperature in bathroom, in Celsius
-
-RH_5, Humidity in bathroom, in %
-
-T6, Temperature outside the building (north side), in Celsius
-
-RH_6, Humidity outside the building (north side), in %
-
-T7, Temperature in ironing room , in Celsius
-
-RH_7, Humidity in ironing room, in %
-
-T8, Temperature in teenager room 2, in Celsius
-
-RH_8, Humidity in teenager room 2, in %
-
-T9, Temperature in parents room, in Celsius
-
-RH_9, Humidity in parents room, in %
-
-To, Temperature outside (from Chievres weather station), in Celsius
-
-Pressure (from Chievres weather station), in mm Hg
-
-RH_out, Humidity outside (from Chievres weather station), in %
-
-Wind speed (from Chievres weather station), in m/s
-
-Visibility (from Chievres weather station), in km
-
-Tdewpoint (from Chievres weather station), Â°C
-
-rv1, Random variable 1, nondimensional
-
-rv2, Random variable 2, nondimensional
-
-Where indicated, hourly data (then interpolated) from the nearest airport weather station (Chievres Airport, Belgium) was downloaded from a public data set from Reliable Prognosis, rp5.ru. Permission was obtained from Reliable Prognosis for the distribution of the 4.5 months of weather data.
-
-Acknowledgements
-Luis M. Candanedo, Veronique Feldheim, Dominique Deramaix, Data driven prediction models of energy use of appliances in a low-energy house, Energy and Buildings, Volume 140, 1 April 2017, Pages 81-97, ISSN 0378-7788, Web Link.
-
-Citation
-Dua, D. and Graff, C. (2019). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science.
+1. Luis M. Candanedo, Veronique Feldheim, Dominique Deramaix, Data driven prediction models of energy use of appliances in a low-energy house, Energy and Buildings, Volume 140, 1 April 2017, Pages 81-97, ISSN 0378-7788. [Web Link](https://www.sciencedirect.com/science/article/abs/pii/S0378778816308970?via%3Dihub) (accessed 23.01.24)
+2. https://archive.ics.uci.edu/dataset/374/appliances+energy+prediction (accessed 23.01.24)
+3. https://flixenergy.pl/blog-1388-inteligentne-systemy-zarzadzania-energia-w-naszym-domach (accessed 23.01.24)
+4. https://en.wikipedia.org/wiki/Belgium#Geography (accessed 20.01.24)
