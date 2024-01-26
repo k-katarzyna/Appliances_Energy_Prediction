@@ -2,6 +2,15 @@ import numpy as np
 import pandas as pd
 
 
+@np.vectorize
+def scale_annotation(value, factor):
+    """
+    Converts a numerical value to a string representation scaled down by a given
+    factor, with one decimal place.
+    """
+    return f"{value/factor:.1f}"
+
+
 def return_train_test_data(data, n_test, xy=False, ohe_drop_first=False):
     """
     Split the dataset into training and testing sets, optionally preparing

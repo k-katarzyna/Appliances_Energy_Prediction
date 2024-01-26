@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
 
+from .utils import scale_annotation
+
 plt.rcParams["font.size"] = 14.0
 plt.rcParams["axes.spines.top"] = False
 plt.rcParams["axes.spines.right"] = False
@@ -65,10 +67,6 @@ def histplots_grid(n_rows, n_cols, data, features=None):
     plt.show()
 
 
-def scale_annotation(value):
-    return f"{value/1000:.1f}"
-
-
 def energy_consumption_all_time(appliances):
     """
     Visualize the average daily energy consumption of appliances over time.
@@ -116,7 +114,7 @@ def energy_consumption_all_time(appliances):
     sns.heatmap(monthly_means, ax=ax2,
                 vmin=vmin, vmax=vmax,
                 cmap="Blues", cbar=False,
-                annot=np.vectorize(scale_annotation)(monthly_means.values),
+                annot=scale_annotation(monthly_means.values, 1000),
                 fmt="s")
     ax2.set_title("Daily means [KWh]")
     ax2.set_ylabel(None)
@@ -293,7 +291,7 @@ def consumption_by_day_and_hour(data):
     sns.heatmap(daily_means,
                 ax=ax2, vmin=vmin, vmax=vmax,
                 cmap="Blues", cbar=False,
-                annot=np.vectorize(scale_annotation)(daily_means.values),
+                annot=scale_annotation(daily_means.values, 1000),
                 fmt="s")
     ax2.set_title("Daily Means [KWh]")
     ax2.set_xticks([])
@@ -304,7 +302,7 @@ def consumption_by_day_and_hour(data):
     sns.heatmap(hourly_means,
                 ax=ax3, vmin=vmin, vmax=vmax,
                 cmap="Blues", cbar=False,
-                annot=np.vectorize(scale_annotation)(hourly_means.values),
+                annot=scale_annotation(hourly_means.values, 1000),
                 fmt="s")
     ax3.set_title("Hourly Means [KWh]")
     ax3.xaxis.tick_top()
