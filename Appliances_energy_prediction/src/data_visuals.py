@@ -94,31 +94,39 @@ def energy_consumption_all_time(appliances):
     
     monthly_means = heatmap_data.mean(axis=1).to_frame()
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 4),
+    fig, (ax1, ax2) = plt.subplots(1, 2,
+                                   figsize=(20, 4),
                                    gridspec_kw={"width_ratios": [30, 1]})
-
     vmin = heatmap_data.min().min()
     vmax = heatmap_data.max().max()
     months = ["Jan", "Feb", "Mar", "Apr", "May"]
 
-    sns.heatmap(heatmap_data, cmap="Blues",
-                ax=ax1, vmin=vmin, vmax=vmax,
+    sns.heatmap(heatmap_data,
+                cmap="Blues",
+                ax=ax1,
+                vmin=vmin,
+                vmax=vmax,
                 cbar_kws={"label": "[Wh]"})
+    
     ax1.set_title("Daily Appliances Usage", fontsize=18)
     ax1.set_xlabel("Day of month")
     ax1.set_ylabel("Month")
-    ax1.set_yticklabels(months)
+    ax1.set_yticklabels(months, rotation=0)
     ax1.set_xticks(np.arange(31) + .5)
     ax1.set_xticklabels(range(1, 32))
 
-    sns.heatmap(monthly_means, ax=ax2,
-                vmin=vmin, vmax=vmax,
-                cmap="Blues", cbar=False,
+    sns.heatmap(monthly_means,
+                ax=ax2,
+                vmin=vmin,
+                vmax=vmax,
+                cmap="Blues",
+                cbar=False,
                 annot=scale_annotation(monthly_means.values, 1000),
                 fmt="s")
-    ax2.set_title("Daily means [KWh]")
+    
+    ax2.set_title("Daily means [kWh]")
     ax2.set_ylabel(None)
-    ax2.set_yticklabels(months, rotation = 0)
+    ax2.set_yticklabels(months, rotation=0)
     ax2.set_xticks([])
 
     plt.tight_layout()
@@ -149,18 +157,27 @@ def energy_vs_lights_plot(appliances, lights):
     x_labels = appliances.index.strftime("%Y-%m-%d")
     x_labels = x_labels[::int(len(x_labels) / 6)]
 
-    sns.lineplot(x=appliances.index, y=appliances, ax=ax1,
-                 color="midnightblue", linestyle="-",
+    sns.lineplot(x=appliances.index,
+                 y=appliances,
+                 ax=ax1,
+                 color="midnightblue",
+                 linestyle="-",
                  label="Appliances energy consumption")
+    
     ax1.set_ylabel("Appliances [Wh]")
     ax1.set_title("General energy consumptions vs. lights energy consumption")
     ax1.set_xticks(x_labels)
     ax1.set_xticklabels(x_labels)
 
     ax2 = ax1.twinx()
-    sns.lineplot(x=lights.index, y=lights, ax=ax2, color="skyblue", linestyle="-",
-                 label="Light energy consumption", alpha=0.8)
-    ax2.set_ylabel('Lights [Wh]')
+    sns.lineplot(x=lights.index,
+                 y=lights,
+                 ax=ax2,
+                 color="skyblue",
+                 linestyle="-",
+                 label="Light energy consumption",
+                 alpha=0.7)
+    ax2.set_ylabel("Lights [Wh]")
 
     lines, labels = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
@@ -186,24 +203,19 @@ def time_series_decomposition(result_day, result_week):
     Returns:
         None: This function plots the decomposition results and does not return any value.
     """   
-    trend_144 = result_day.trend
-    trend_1008 = result_week.trend
-    seasonal = result_week.seasonal
-    residual = result_week.resid
-    
     fig, axes = plt.subplots(4, 1, figsize=(20, 12), sharex=True)
     fig.suptitle("Time series decomposition", fontsize=20)
     
-    sns.lineplot(data=trend_144, ax=axes[0])
+    sns.lineplot(data=result_day.trend, ax=axes[0])
     axes[0].legend(["Trend (day)"])
     
-    sns.lineplot(data=trend_1008, ax=axes[1])
+    sns.lineplot(data=result_week.trend, ax=axes[1])
     axes[1].legend(["Trend (week)"])
     
-    sns.lineplot(data=seasonal, ax=axes[2])
+    sns.lineplot(data=result_week.seasonal, ax=axes[2])
     axes[2].legend(["Seasonality (week)"])
     
-    sns.scatterplot(data=residual, ax=axes[3])
+    sns.scatterplot(data=result_week.resid, ax=axes[3])
     axes[3].legend(["Residual (week)"])
     
     plt.tight_layout()
@@ -226,13 +238,16 @@ def acf_pacf(time_series, lags):
     Returns:
         None: This function plots the ACF and PACF and does not return any value.
     """    
-    plt.figure(figsize=(20, 5))
-    plt.subplot(121)
+    plt.figure(figsize=(20, 10))
+    plt.subplot(221)
     plot_acf(time_series, ax=plt.gca(), lags=lags)
     plt.title(f"ACF for {time_series.name}")
-    plt.subplot(122)
+    plt.subplot(222)
     plot_pacf(time_series, ax=plt.gca(), lags=lags)
     plt.title(f"PACF for {time_series.name}")
+    # plt.subplot(212)
+    # plot_acf(time_series, ax=plt.gca(), lags=1008)
+    # plt.title(f"ACF for {time_series.name}")
     plt.tight_layout()
     plt.show()
     
@@ -255,24 +270,29 @@ def consumption_by_day_and_hour(data):
         None: This function plots the heatmaps and does not return any value.
     """
     grouped_data = (data
-                    .groupby(["day_of_week", "hour"])["Appliances"]
+                    .groupby(["week_of_year", "day_of_week", "hour"])["Appliances"]
                     .sum()
-                    .unstack())
+                    .unstack(level=2)
+                    .groupby("day_of_week")
+                    .mean())
     
     order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     grouped_data = grouped_data.reindex(order)
 
-    daily_means = grouped_data.mean(axis=1).to_frame()
+    daily_means = grouped_data.sum(axis=1).to_frame()
     hourly_means = grouped_data.mean(axis=0).to_frame().T
     
-    fig = plt.figure(figsize=(20, 7), constrained_layout=True)
+    fig = plt.figure(figsize=(20, 6.5), constrained_layout=True)
     
     gs = fig.add_gridspec(2, 2,
-                          width_ratios=[24, 1],
+                          width_ratios=[26, 1],
                           height_ratios=[6, 0.8], 
-                          left=0.1, right=0.9,
-                          bottom=0.1, top=0.9,
-                          wspace=0.05, hspace=0.05)
+                          left=0.1,
+                          right=0.9,
+                          bottom=0.1,
+                          top=0.9,
+                          wspace=0.05,
+                          hspace=0.05)
     
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[0, 1])
@@ -281,35 +301,46 @@ def consumption_by_day_and_hour(data):
     vmin = grouped_data.min().min()
     vmax = grouped_data.max().max()
     
-    sns.heatmap(grouped_data, cmap="Blues", ax=ax1, vmin=vmin, vmax=vmax, cbar=True)
-    ax1.set_title("Daily and Hourly Average Appliances Usage [Wh]")
+    sns.heatmap(grouped_data,
+                cmap="Blues",
+                ax=ax1,
+                vmin=vmin,
+                vmax=vmax,
+                cbar=True,
+                cbar_kws={"label": "[Wh]"})
+    
+    ax1.set_title("Hourly average appliances usage by weekday", fontsize=18)
     ax1.set_yticklabels([day[:3] for day in order])
     ax1.set_xticklabels(range(0,24))
     ax1.set_xlabel("Hour")
     ax1.set_ylabel("Day of Week")
     
     sns.heatmap(daily_means,
-                ax=ax2, vmin=vmin, vmax=vmax,
-                cmap="Blues", cbar=False,
+                ax=ax2,
+                cmap=sns.color_palette("ch:start=.2,rot=-.3", as_cmap=True),
+                cbar=False,
                 annot=scale_annotation(daily_means.values, 1000),
                 fmt="s")
-    ax2.set_title("Daily Means [KWh]")
+    
+    ax2.set_title("Daily means [kWh]")
     ax2.set_xticks([])
     ax2.set_yticklabels([day[:3] for day in order])
     ax2.set_xlabel("")
     ax2.set_ylabel("")
     
     sns.heatmap(hourly_means,
-                ax=ax3, vmin=vmin, vmax=vmax,
-                cmap="Blues", cbar=False,
-                annot=scale_annotation(hourly_means.values, 1000),
-                fmt="s")
-    ax3.set_title("Hourly Means [KWh]")
+                ax=ax3,
+                vmin=vmin,
+                vmax=vmax,
+                cmap="Blues",
+                cbar=False,
+                annot=False)
+    
+    ax3.set_title("Hourly Means", fontsize=16)
     ax3.xaxis.tick_top()
     ax3.set_xticklabels("")
     ax3.set_xlabel("")
     ax3.set_yticks([])
-    
     plt.show()
 
 
@@ -468,7 +499,8 @@ class WeeklyDataVisualizer:
 
             for i, (week, col) in enumerate(product(weeks, columns)):
                 self._plot_week_data(axes[i],
-                                     week, col,
+                                     week,
+                                     col,
                                      label=f"Week {week}",
                                      **kwargs)
                 axes[i].set_xlabel("")
@@ -493,6 +525,7 @@ class WeeklyDataVisualizer:
                                 .groupby(["day_of_week", "hour"])[col]
                                 .sum()
                                 .unstack())
+                
             order = ["Monday", "Tuesday", "Wednesday", "Thursday",
                      "Friday", "Saturday", "Sunday"]
             grouped_data = grouped_data.reindex(order)
@@ -500,6 +533,7 @@ class WeeklyDataVisualizer:
             plt.figure(figsize=kwargs.get("figsize", (20, 2.5)))
             sns.heatmap(grouped_data,
                         yticklabels=([day[:3] for day in order]),
+                        cbar_kws={"label": "[Wh]"},
                         cmap=kwargs.get("cmap", "Blues"),
                         **kwargs)
             plt.title(f"Week {week}, {col}")
