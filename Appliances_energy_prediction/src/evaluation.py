@@ -39,7 +39,7 @@ def prediction_benchmarks(data, n_test):
     """
     train, test = return_train_test_data(data, n_test)
     
-    means = train.groupby(["day_of_week", "hour", "minute"])["Appliances"].mean()
+    means = train.groupby(["day_of_week", "hour", "minute"])["Appliances_24"].mean()
     historical_means = test.apply(lambda row:
                                     means.loc[(row["day_of_week"], row["hour"], row["minute"])], 
                                     axis=1)
@@ -125,7 +125,7 @@ def diagnose_errors(y_test, y_pred):
     plt.show()
 
 
-def evaluate_model(X_train, X_test, y_train, y_test, model):
+def evaluate_model(X_test, y_test, model):
     """
     Evaluate a given model's performance on test data and visualize the results.
 
@@ -135,9 +135,7 @@ def evaluate_model(X_train, X_test, y_train, y_test, model):
     calls the diagnose_errors function to further analyze the prediction errors.
 
     Parameters:
-        X_train (pd.DataFrame): The training data features.
         X_test (pd.DataFrame): The test data features.
-        y_train (array-like): The actual values for the training data.
         y_test (array-like): The actual values for the test data.
         model (fitted on train data ML model object): The model to be evaluated.
 
@@ -147,16 +145,16 @@ def evaluate_model(X_train, X_test, y_train, y_test, model):
     name = model.regressor_.named_steps["model"].__class__.__name__
     y_pred = model.predict(X_test)
     mape = mean_absolute_percentage_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred, squared=False)
+    rmse = mean_squared_error(y_test, y_pred, squared=False)
     mae = mean_absolute_error(y_test, y_pred)
     
     plt.figure(figsize=(20,5))
     plt.plot(X_test.index, y_test)
     plt.plot(X_test.index, y_pred,
              color="red",
-             label=f"MAPE {mape:.3f}, RMSE {mse:.0f}, MAE {mae:.0f}")
+             label=f"MAPE {mape:.3f}, RMSE {rmse:.0f}, MAE {mae:.0f}")
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%a'))
-    plt.title(f"Best {name}'s performance (on test data)")
+    plt.title(f"Best model's ({name}) performance (on test data)")
     plt.legend()
     plt.show()
     print("\n\n")
@@ -208,4 +206,37 @@ def time_series_split(tscv, X_train):
     plt.xticks(fontsize=9)
     plt.yticks(fontsize=9)
     plt.legend()
+    plt.show()
+
+
+def feature_importances(importances, feature_names):
+    """
+    Create horizontal barplot for feature importances.
+
+    The function helps to assess how the model prioritizes features, which is
+    particularly useful in the context of the newly added datetime features
+    and random features.
+
+    Parameters:
+        importances (np.array): Feature importances values.
+        feature_names (list): Feature names for plotting.
+
+    Returns:
+        None: This function plots feature importances and does not return any value.
+    """
+    sorted_indices = importances.argsort()
+    sorted_names = [feature_names[i] for i in sorted_indices]
+    sorted_importances = importances[sorted_indices]
+
+    plt.figure(figsize=(7, 14))
+    plt.barh(range(len(sorted_names)),
+             sorted_importances,
+             align="center",
+             color="steelblue")
+    
+    plt.yticks(range(len(sorted_names)), sorted_names, fontsize=10)
+    plt.xlabel("Feature Importance")
+    plt.ylabel("Feature Name")
+    plt.title("Feature Importances")
+    plt.tight_layout()
     plt.show()
