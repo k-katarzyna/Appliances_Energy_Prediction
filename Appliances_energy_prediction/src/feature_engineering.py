@@ -158,7 +158,6 @@ class DataEnhancer:
                              for window_size in windows]
         
         modified_data = pd.concat([modified_data] + moving_av_columns, axis=1)
-        modified_data.dropna(inplace=True)
         
         if return_new:
             return modified_data.dropna()
@@ -187,7 +186,6 @@ class DataEnhancer:
                              for window_size in windows]
         
         modified_data = pd.concat([modified_data] + moving_sum_columns, axis=1)
-        modified_data.dropna(inplace=True)
         
         if return_new:
             return modified_data.dropna()
