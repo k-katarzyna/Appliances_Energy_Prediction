@@ -182,7 +182,7 @@ def time_series_split(tscv, X_train):
         observation_ranges_train.append((train_index.min(), train_index.max() + 1))
         observation_ranges_test.append((test_index.min(), test_index.max() + 1))
     
-    plt.figure(figsize=(8, 3))
+    plt.figure(figsize=(6, 2.5))
     bar_width = 0.3
     plt.barh(
         range(len(observation_ranges_train)),
