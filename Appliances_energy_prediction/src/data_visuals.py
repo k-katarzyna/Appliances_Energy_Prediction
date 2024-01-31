@@ -1,10 +1,14 @@
 from itertools import product
+
 import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
+
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+import statsmodels.api as sm
 
 from .utils import scale_annotation
 
@@ -69,12 +73,12 @@ def histplots_grid(n_rows, n_cols, data, features=None):
 
 def energy_consumption_all_time(appliances):
     """
-    Visualize the average daily energy consumption of appliances over time.
+    Visualize daily energy consumption of appliances over time.
 
     This function creates two heatmaps:
-    1. The first heatmap displays the average daily appliance energy usage
+    1. The first heatmap displays the total daily appliance energy usage
     for each day of the month across different months.
-    2. The second heatmap shows the average monthly energy usage.
+    2. The second heatmap shows the average daily energy usage by month.
 
     The function is designed to provide insights into daily and monthly usage
     patterns of appliances. It uses resampling to calculate daily averages and
@@ -133,7 +137,7 @@ def energy_consumption_all_time(appliances):
     plt.show()
     
     
-def energy_vs_lights_plot(appliances, lights):
+def appliances_vs_lights_plot(appliances, lights):
     """
     Plot energy consumption of appliances alongside light energy consumption
     over time.
@@ -165,7 +169,7 @@ def energy_vs_lights_plot(appliances, lights):
                  label="Appliances energy consumption")
     
     ax1.set_ylabel("Appliances [Wh]")
-    ax1.set_title("General energy consumptions vs. lights energy consumption")
+    ax1.set_title("Appliances energy consumptions vs. lights energy consumption")
     ax1.set_xticks(x_labels)
     ax1.set_xticklabels(x_labels)
 
@@ -202,7 +206,7 @@ def time_series_decomposition(result_day, result_week):
 
     Returns:
         None: This function plots the decomposition results and does not return any value.
-    """   
+    """
     fig, axes = plt.subplots(4, 1, figsize=(20, 12), sharex=True)
     fig.suptitle("Time series decomposition", fontsize=20)
     
@@ -245,9 +249,6 @@ def acf_pacf(time_series, lags):
     plt.subplot(222)
     plot_pacf(time_series, ax=plt.gca(), lags=lags)
     plt.title(f"PACF for {time_series.name}")
-    # plt.subplot(212)
-    # plot_acf(time_series, ax=plt.gca(), lags=1008)
-    # plt.title(f"ACF for {time_series.name}")
     plt.tight_layout()
     plt.show()
     
@@ -431,12 +432,14 @@ class WeeklyDataVisualizer:
     def plot_one_week(self, week, columns, **kwargs):
         """
         Plot line graphs for specified columns in a given week.
-
+    
         Parameters:
             week (int): The week number to plot.
-            columns (list): A list of column names to be plotted.
+            columns (list or list of lists): A list of column names to be plotted. 
+                If a list of lists is provided, each nested list will be plotted
+                together on the same plot.
             **kwargs: Additional keyword arguments for the seaborn lineplot.
-        """        
+        """    
         if all(isinstance(col, list) for col in columns):
             subsets = columns
         else:
