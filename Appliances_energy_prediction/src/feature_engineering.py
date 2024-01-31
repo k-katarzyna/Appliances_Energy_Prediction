@@ -55,7 +55,7 @@ class DataEnhancer:
                 "afternoon" if 12 <= hour < 17 else
                 "evening" if 17 <= hour < 22 else
                 "night")
-
+        
     def add_datetime_features(self):
         """
         Add various datetime related features such as day of the week, hour,
@@ -94,7 +94,7 @@ class DataEnhancer:
         self.data.drop(features, axis=1, inplace=True)
         return self
 
-    def mark_high_values(self):
+    def mark_high_values(self, quantile_0_1=0.90, quantile_1_2=0.95):
         """
         Mark high value records in the dataset based on predefined criteria.
 
@@ -102,11 +102,27 @@ class DataEnhancer:
             DataEnhancer: The instance itself for method chaining.
         """
         usage = self.data.Appliances
-        very_high = usage >= np.quantile(usage, 0.95)
-        high = (usage < np.quantile(usage, 0.95)) & (usage > np.quantile(usage, 0.90))
+        very_high = usage >= np.quantile(usage, quantile_1_2)
+        high = (usage < np.quantile(usage, quantile_1_2)) & (usage > np.quantile(usage, quantile_0_1))
 
         self.data["is_high_usage"] = (np.where(very_high, 2,
                                                np.where(high, 1, 0)))
+        return self
+        
+    def mark_empty_home_days(self, max_usage_threshold=250):
+        """
+        Mark days when the house is likely empty based on analysis and assumptions
+        regarding energy consumption patterns.
+
+        Returns:
+            DataEnhancer: The instance itself for method chaining.
+        """
+        grouped = self.data.groupby("day_of_year")["Appliances"].max()
+        empty_home_days = grouped[grouped <= max_usage_threshold].index
+        
+        self.data["is_empty_home"] = np.where(self.data
+                                              .day_of_year
+                                              .isin(empty_home_days), 1, 0)
         return self
 
     def add_lagged_features(self, lags, return_new=False):
