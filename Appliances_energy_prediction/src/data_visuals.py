@@ -8,7 +8,6 @@ import matplotlib.dates as mdates
 import seaborn as sns
 
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-import statsmodels.api as sm
 
 from .utils import scale_annotation
 
@@ -226,7 +225,7 @@ def time_series_decomposition(result_day, result_week):
     plt.show()
 
 
-def acf_pacf(time_series, lags):
+def autocorrelation_plot(time_series, lags):
     """
     Plot the Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF)
     of a time series.
@@ -242,13 +241,15 @@ def acf_pacf(time_series, lags):
     Returns:
         None: This function plots the ACF and PACF and does not return any value.
     """    
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(20, 8))
     plt.subplot(221)
     plot_acf(time_series, ax=plt.gca(), lags=lags)
     plt.title(f"ACF for {time_series.name}")
+    plt.ylim(-0.5, 1)
     plt.subplot(222)
     plot_pacf(time_series, ax=plt.gca(), lags=lags)
     plt.title(f"PACF for {time_series.name}")
+    plt.ylim(-0.5, 1)
     plt.tight_layout()
     plt.show()
     
