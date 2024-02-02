@@ -54,3 +54,26 @@ def return_train_test_data(data, n_test, xy=False, ohe_drop_first=False):
     else:
         train, test = data.iloc[:-n_test], data.iloc[-n_test:]
         return train, test
+
+
+def weighted_mean(row, weights):
+    """
+    Calculate the weighted mean of values in a row based on the provided weights.
+
+    This function computes the weighted mean for a series of values using specified weights.
+    It iterates through each column in the row, multiplies each value by its corresponding
+    weight (if a weight is provided), and then divides the total weighted sum by the sum
+    of the weights used. The result is rounded to three decimal places.
+
+    Parameters:
+        row (pd.Series): A row of values for which the weighted mean is to be calculated
+            (a single row from a DataFrame).
+        weights (dict): A dictionary where keys correspond to column names in 'row' and values
+            are the weights to be applied to each column's value.
+
+    Returns:
+        float: The weighted mean of the values in the row, rounded to three decimal places.
+    """
+    weighted_sum = sum(row[col] * weights[col] for col in row.index if col in weights)
+    total_weight = sum(weights[col] for col in row.index if col in weights)
+    return weighted_sum / total_weight
