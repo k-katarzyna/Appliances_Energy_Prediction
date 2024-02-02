@@ -45,10 +45,7 @@ def histplots_grid(n_rows, n_cols, data, features=None):
     width = n_cols * 3.2
     height = n_rows * 2.4
     
-    fix, axes = plt.subplots(n_rows, n_cols, figsize=(width, height))
-    
-    if n_rows == 1 or n_cols == 1:
-        axes = axes.reshape(n_rows, n_cols)
+    fix, axes = plt.subplots(n_rows, n_cols, figsize=(width, height), squeeze=False)
     
     for i, feature in enumerate(features):
         row, col = divmod(i, n_cols)
