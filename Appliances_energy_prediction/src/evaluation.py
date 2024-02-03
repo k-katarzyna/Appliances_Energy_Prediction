@@ -1,5 +1,3 @@
-from warnings import catch_warnings, simplefilter
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,15 +8,14 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import RandomizedSearchCV
 
 from .utils import return_train_test_data
+
 
 plt.rcParams["font.size"] = 14.0
 plt.rcParams["axes.spines.top"] = False
 plt.rcParams["axes.spines.right"] = False
 
-SEED = 42
 
 def prediction_benchmarks(data, n_test):
     """
@@ -66,11 +63,14 @@ def prediction_benchmarks(data, n_test):
     fig.suptitle("Prediction benchmarks", fontsize=16)
 
     for ax, title, preds in zip((ax1, ax2, ax3),
-                                ("week before", "historical means",
+                                ("week before",
+                                 "historical means",
                                  "linear regression"),
-                                (week_before, historical_means, y_pred)):
+                                (week_before,
+                                 historical_means,
+                                 y_pred)):
         ax.plot(test.index, y_test, label="y_test", color="tab:blue")
-        ax.plot(test.index, preds, label=title, color="tab:orange")
+        ax.plot(test.index, preds, label=title, color="red")
 
         mape = mean_absolute_percentage_error(y_test, preds)
         mae = mean_absolute_error(y_test, preds)
@@ -106,27 +106,33 @@ def time_series_split(tscv, X_train):
     """    
     observation_ranges_train = []
     observation_ranges_test = []
+
     for train_index, test_index in tscv.split(X_train):
         observation_ranges_train.append((train_index.min(), train_index.max() + 1))
         observation_ranges_test.append((test_index.min(), test_index.max() + 1))
     
     plt.figure(figsize=(6, 2.5))
     bar_width = 0.3
+    
+    palette = sns.color_palette("Paired")
+    first_blue = palette[0]
+    second_blue = palette[1]
+    
     plt.barh(
         range(len(observation_ranges_train)),
         [end - start for start, end in observation_ranges_train],
         left=[start for start, _ in observation_ranges_train],
-        label="Train"
+        label="Train", color=first_blue
     )
     plt.barh(
         [idx for idx in range(len(observation_ranges_test))],
         [end - start for start, end in observation_ranges_test],
         left=[start for start, _ in observation_ranges_test],
-        label="Test"
+        label="Test", color=second_blue
     )
-    plt.xlabel("Observation number", fontdict={"size":12})
-    plt.ylabel("Split", fontdict={"size":12})
-    plt.title("Observation ranges in TimeSeriesSplit")
+    plt.xlabel("Observation number", fontdict={"size": 12})
+    plt.ylabel("Split", fontdict={"size": 12})
+    plt.title("Observation ranges in TimeSeriesSplit", fontsize=14)
     plt.yticks(
         [idx for idx in range(len(observation_ranges_train))],
         [f"Split {i + 1}" for i in range(len(observation_ranges_train))]
@@ -137,29 +143,91 @@ def time_series_split(tscv, X_train):
     plt.show()
 
 
-def optimize_params(preprocessor, model, param, X_train, y_train, tss,
-                    n_iter=100, rscv_kw={}, fit_kw={}):
+def scores_for_weights(data):
+    """
+    Visualize the impact of different weights on RMSE and MAPE scores for training
+    and testing datasets.
+
+    This function filters the input data for specific weight values (1, 5, 10), then
+    prepares and displays two bar plots: one for the Root Mean Squared Error (RMSE)
+    and the other for the Mean Absolute Percentage Error (MAPE). These plots compare
+    the performance metrics for training and testing datasets across the selected weights.
+
+    Parameters:
+        data (pd.DataFrame): A DataFrame containing model parameters and metrics, including
+            weights, RMSE for training and testing datasets and MAPE for training and testing
+            datasets.
+
+    Returns:
+        None: This function visualizes the metrics comparison and does not return any value.
+
+    Note:
+        The input DataFrame should have the following columns:
+        - params.weight: The weight parameter values.
+        - metrics.best_rmse_train: The average of best RMSE scores on the training dataset.
+        - metrics.best_rmse: The average of best RMSE scores on the testing dataset.
+        - metrics.best_mape_train: The average of best MAPE scores on the training dataset.
+        - metrics.best_mape: The average of best MAPE scores on the testing dataset.
+
+        The function filters the data for weights 1, 5, and 10 and visualizes the RMSE and MAPE
+        scores for these weights to analyze how the weight parameter affects model performance.
+    """
+    data = data.copy()    
+    data["params.weight"] = data["params.weight"].astype(int)
+    data = data[data["params.weight"].isin([1, 5, 10])]
     
-    pipeline = Pipeline([("preprocessor", preprocessor),
-                         ("model", model)])
+    melted_rmse = data.melt(id_vars="params.weight", 
+                            value_vars=["metrics.best_rmse_train", "metrics.best_rmse"],
+                            var_name="Type", value_name="RMSE")
+    melted_rmse["Type"] = melted_rmse["Type"].map({"metrics.best_rmse_train": "Train",
+                                                   "metrics.best_rmse": "Test"})
+    
+    melted_mape = data.melt(id_vars="params.weight", 
+                            value_vars=["metrics.best_mape_train", "metrics.best_mape"],
+                            var_name="Type", value_name="MAPE")
+    melted_mape["Type"] = melted_mape["Type"].map({"metrics.best_mape_train": "Train",
+                                                   "metrics.best_mape": "Test"})
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 4))
+    plt.suptitle("Average score for train and test by weight for high values")
+    
+    sns.barplot(x="params.weight",
+                y="RMSE",
+                hue="Type",
+                data=melted_rmse,
+                palette="Paired",
+                ax=ax1)
+    ax1.set_ylabel("RMSE")
+    ax1.set_ylim(85, 105)
+    ax1.set_title("RMSE")
+    
+    sns.barplot(x="params.weight",
+                y="MAPE", hue="Type",
+                data=melted_mape,
+                palette="Paired",
+                ax=ax2)
+    ax2.set_ylabel("MAPE")
+    ax2.set_ylim(0.3, 0.8)
+    ax2.set_title("MAPE")
 
-    optimizer = RandomizedSearchCV(estimator=TransformedTargetRegressor(pipeline), 
-                                   param_distributions=param, 
-                                   cv=tss,
-                                   n_iter=n_iter, 
-                                   scoring={"rmse": "neg_root_mean_squared_error",
-                                            "mae": "neg_mean_absolute_error",
-                                            "mape": "neg_mean_absolute_percentage_error"},
-                                   refit="rmse",
-                                   n_jobs=-1,
-                                   error_score="raise",
-                                   random_state=SEED,
-                                   **rscv_kw)
-    with catch_warnings():
-        simplefilter("ignore")
-        optimizer.fit(X_train, y_train, **fit_kw)
-
-    return optimizer
+    for ax in [ax1, ax2]:
+            ax.set_xlabel("Weight")
+            ax.grid(True,
+                    which="major",
+                    linestyle="-",
+                    linewidth="0.4",
+                    alpha=0.3)
+            ax.minorticks_on()
+            ax.grid(True,
+                    which="minor",
+                    linestyle=":",
+                    linewidth="0.2",
+                    axis="y",
+                    alpha=0.6)
+            ax.legend(loc="upper left")
+    
+    plt.tight_layout()
+    plt.show()
 
 
 def diagnose_errors(y_test, y_pred):
@@ -183,16 +251,18 @@ def diagnose_errors(y_test, y_pred):
     fig, ax = plt.subplots(1, 4, figsize=(20, 4))
     
     ax[0].scatter(y_test, y_pred)
-    ax[0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], c="r" )
+    ax[0].plot([y_test.min(), y_test.max()],
+               [y_test.min(), y_test.max()],
+               c="r" )
     ax[0].set_title("y_pred ~ y_test")
     
     errors = y_test - y_pred
     ax[1].scatter(range(len(errors)), errors)
-    ax[1].hlines(0, 4000, 0, color="r")
+    ax[1].hlines(0, len(errors), 0, color="r")
     ax[1].set_title("errors ~ i")
     
     ax[2].scatter(y_test, errors)
-    ax[2].hlines(0, 4000, 0, color="r")
+    ax[2].hlines(0, xmin=min(y_test), xmax=max(y_test), color="r")
     ax[2].set_title("errors ~ y_test")
     
     ax[3].hist(errors)
@@ -202,7 +272,7 @@ def diagnose_errors(y_test, y_pred):
     plt.show()
 
 
-def evaluate_model(X_test, y_test, model):
+def evaluate_model(X_test, y_test, model, include_diagnostics=True):
     """
     Evaluate a given model's performance on test data and visualize the results.
 
@@ -237,8 +307,9 @@ def evaluate_model(X_test, y_test, model):
     plt.title(f"Best model's ({name}) performance (on test data)")
     plt.legend()
     plt.show()
-    print("\n\n")
-    diagnose_errors(y_test, y_pred)
+    if include_diagnostics:
+        print("\n\n")
+        diagnose_errors(y_test, y_pred)
 
 
 def feature_importances(importances, feature_names):

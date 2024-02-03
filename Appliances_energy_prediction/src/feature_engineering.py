@@ -219,6 +219,93 @@ class DataEnhancer:
         self.data.dropna(inplace=True)
         return self
 
+    def add_cyclic_features(self):
+    """
+    Add cyclic features to the dataset to capture the cyclical nature of time-related
+    variables.
+
+    This method computes and adds sinusoidal and cosinusoidal transformations for hours,
+    weekdays and time of day to the dataset. Those could help machine learning models to
+    capture the cyclical patterns within time-related data, improving the model's ability
+    to make predictions.
+
+    Returns:
+        DataEnhancer: The instance itself for method chaining.
+    """
+        hour = self.data.hour
+        self.weekday_ = pd.Series(self.data.index.dayofweek,
+                                  index=self.data.index)
+        time_of_day_mapping = {"night": 0,
+                               "morning": 1,
+                               "forenoon": 2,
+                               "afternoon": 3,
+                               "evening": 4}
+        self.time_of_day_ = self.data.time_of_day.map(time_of_day_mapping)
+        
+        new_frame = pd.DataFrame({
+            "hour_sin": hour.apply(
+                lambda h: np.sin(h * (2. * np.pi / 24))
+            ),
+            "hour_cos": hour.apply(
+                lambda h: np.cos(h * (2. * np.pi / 24))
+            ),
+            "weekday_sin": self.weekday_.apply(
+                lambda d: np.sin(d * (2. * np.pi / 7))
+            ),
+            "weekday_cos": self.weekday_.apply(
+                lambda d: np.cos(d * (2. * np.pi / 7))
+            ),
+            "timeofday_sin": self.time_of_day_.apply(
+                lambda t: np.sin(t * (2. * np.pi / 5))
+            ),
+            "timeofday_cos": self.time_of_day_.apply(
+                lambda t: np.cos(t * (2. * np.pi / 5))
+            )
+        })
+        self.cyclic_features_ = new_frame.columns.to_list()
+        self.data = pd.concat([self.data, new_frame], axis=1)
+        return self
+
+    def add_interaction_features(self, datetime=True, climate=False):
+    """
+    Add interaction features to the dataset based on specified options.
+
+    This method can add interaction features derived from datetime components (hour, minute,
+    weekday) and microclimate measurements (temperature and humidity pairs, temperature and
+    windspeed). Interaction features are combinations of two or more features that may provide
+    additional predictive power to machine learning models.
+
+    Parameters:
+        datetime (bool, optional): If True, adds datetime interaction features. Default is True.
+        climate (bool, optional): If True, adds climate interaction features. Default is False.
+
+    Returns:
+        DataEnhancer: The instance itself for method chaining.
+    """
+        new_frame = pd.DataFrame()
+        
+        if datetime:
+            datetime_frame = pd.DataFrame({
+                "hour_min": self.data.hour + self.data.minute / 60,
+                "weekday_hour": (self.weekday_ + 1) * (self.data.hour + 1),
+                "weekday_timeofday": (self.weekday_ + 1) * (self.time_of_day_ + 1)
+            })
+            new_frame = pd.concat([new_frame, datetime_frame], axis=1)
+
+        if climate:
+            t_rh_pairs = ([(f"T{i}", f"RH_{i}") for i in range(1, 10) if i != 6]
+                          + [("T_out", "RH_out")])
+            
+            climate_frame = pd.DataFrame({
+                **{f"{t}_{rh}" : self.data[t] * self.data[rh] for t, rh in t_rh_pairs},
+                "T_out_Windspeed": self.data["T_out"] * self.data["Windspeed"]
+            })
+            new_frame = pd.concat([new_frame, climate_frame], axis=1)
+
+        self.interaction_features_ = new_frame.columns.to_list()
+        self.data = pd.concat([self.data, new_frame], axis=1)
+        return self
+
 
 class AnomaliesMarker(BaseEstimator, TransformerMixin):
     """

@@ -76,4 +76,4 @@ def weighted_mean(row, weights):
     """
     weighted_sum = sum(row[col] * weights[col] for col in row.index if col in weights)
     total_weight = sum(weights[col] for col in row.index if col in weights)
-    return weighted_sum / total_weight
+    return np.round(weighted_sum / total_weight, 3)
