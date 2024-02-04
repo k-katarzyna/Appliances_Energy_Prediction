@@ -285,6 +285,8 @@ def evaluate_model(X_test, y_test, model, include_diagnostics=True):
         X_test (pd.DataFrame): The test data features.
         y_test (array-like): The actual values for the test data.
         model (fitted on train data ML model object): The model to be evaluated.
+        include_diagnostics(bool, optional): If set to True, includes diagnostic
+            charts for prediction errors. Default is True.
 
     Returns:
         None: This function plots the evaluation results and does not return any value.
@@ -331,15 +333,17 @@ def feature_importances(importances, feature_names):
     sorted_names = [feature_names[i] for i in sorted_indices]
     sorted_importances = importances[sorted_indices]
 
-    plt.figure(figsize=(7, 14))
+    plt.figure(figsize=(6, 13))
     plt.barh(range(len(sorted_names)),
              sorted_importances,
              align="center",
              color="steelblue")
     
     plt.yticks(range(len(sorted_names)), sorted_names, fontsize=10)
-    plt.xlabel("Feature Importance")
-    plt.ylabel("Feature Name")
-    plt.title("Feature Importances")
+    plt.xlabel("Feature Importance", fontdict={"size":12})
+    plt.ylabel("Feature Name", fontdict={"size":12})
+    plt.title("Feature Importances", fontdict={"size":14})
+    plt.xticks(fontsize=9)
+    plt.yticks(fontsize=9)
     plt.tight_layout()
     plt.show()

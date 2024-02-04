@@ -1,5 +1,6 @@
 import os
 from datetime import date
+
 import numpy as np
 import pandas as pd
 from holidays.countries import Belgium
@@ -23,11 +24,17 @@ class DataEnhancer:
     Methods:
         add_datetime_features(): Adds date and time related features to the dataset.
         drop_features(features): Drops specified columns from the dataset.
-        mark_high_values(): Marks high value records in the dataset.
+        mark_high_values(quantile_0_1, quantile_1_2): Marks high value records in
+            the dataset.
+        mark_empty_home_days(max_usage_threshold): Marks days with minimal energy
+            consumption.
         add_lagged_features(lags, return_new): Adds lagged features to the dataset.
         add_moving_average(windows, return_new): Adds moving average calculations to
             the dataset.
         add_moving_sum(windows, return_new): Adds moving sum calculations to the dataset.
+        add_cyclic_features(): Adds cyclic features for hours, weekdays and time of day.
+        add_interaction_features(datetime, climate): Adds datetime and microclimate
+            interaction features.
         dropna(): Drops rows with missing values from the dataset.
     """
 
@@ -97,13 +104,22 @@ class DataEnhancer:
     def mark_high_values(self, quantile_0_1=0.90, quantile_1_2=0.95):
         """
         Mark high value records in the dataset based on predefined criteria.
+        
+        Parameters:
+            quantile_0_1 (float): The lower quantile threshold to classify records
+                as high usage. Default is 0.90. Records above this threshold but below
+                the `quantile_1_2` are marked as high usage (1).
+            quantile_1_2 (float): The upper quantile threshold to classify records as very
+                high usage. Default is 0.95. Records above this threshold are marked as very
+                high usage (2).
 
         Returns:
             DataEnhancer: The instance itself for method chaining.
         """
         usage = self.data.Appliances
         very_high = usage >= np.quantile(usage, quantile_1_2)
-        high = (usage < np.quantile(usage, quantile_1_2)) & (usage > np.quantile(usage, quantile_0_1))
+        high = ((usage < np.quantile(usage, quantile_1_2))
+                & (usage > np.quantile(usage, quantile_0_1)))
 
         self.data["is_high_usage"] = (np.where(very_high, 2,
                                                np.where(high, 1, 0)))
@@ -113,6 +129,10 @@ class DataEnhancer:
         """
         Mark days when the house is likely empty based on analysis and assumptions
         regarding energy consumption patterns.
+
+        Parameters:
+            max_usage_threshold (int): The maximum energy usage threshold (in Wh)
+                for considering a home empty for the day. Default is 250 Wh.
 
         Returns:
             DataEnhancer: The instance itself for method chaining.
@@ -191,8 +211,8 @@ class DataEnhancer:
                 otherwise updates the instance's data.
 
         Returns:
-            DataEnhancer or pd.DataFrame: The instance itself or a new DataFrame depending
-                on the 'return_new' parameter.
+            DataEnhancer or pd.DataFrame: The instance itself or a new DataFrame
+            depending on the 'return_new' parameter.
         """
         modified_data = self.data.copy()
         
@@ -220,18 +240,17 @@ class DataEnhancer:
         return self
 
     def add_cyclic_features(self):
-    """
-    Add cyclic features to the dataset to capture the cyclical nature of time-related
-    variables.
-
-    This method computes and adds sinusoidal and cosinusoidal transformations for hours,
-    weekdays and time of day to the dataset. Those could help machine learning models to
-    capture the cyclical patterns within time-related data, improving the model's ability
-    to make predictions.
-
-    Returns:
-        DataEnhancer: The instance itself for method chaining.
-    """
+        """
+        Add cyclic features to the dataset to capture the cyclical nature of
+        time-related variables.
+    
+        This method computes and adds sinusoidal and cosinusoidal transformations
+        for hours, weekdays and time of day to the dataset. Those could help machine
+        learning models to capture the cyclical patterns within time-related data.
+    
+        Returns:
+            DataEnhancer: The instance itself for method chaining.
+        """
         hour = self.data.hour
         self.weekday_ = pd.Series(self.data.index.dayofweek,
                                   index=self.data.index)
@@ -243,45 +262,34 @@ class DataEnhancer:
         self.time_of_day_ = self.data.time_of_day.map(time_of_day_mapping)
         
         new_frame = pd.DataFrame({
-            "hour_sin": hour.apply(
-                lambda h: np.sin(h * (2. * np.pi / 24))
-            ),
-            "hour_cos": hour.apply(
-                lambda h: np.cos(h * (2. * np.pi / 24))
-            ),
-            "weekday_sin": self.weekday_.apply(
-                lambda d: np.sin(d * (2. * np.pi / 7))
-            ),
-            "weekday_cos": self.weekday_.apply(
-                lambda d: np.cos(d * (2. * np.pi / 7))
-            ),
-            "timeofday_sin": self.time_of_day_.apply(
-                lambda t: np.sin(t * (2. * np.pi / 5))
-            ),
-            "timeofday_cos": self.time_of_day_.apply(
-                lambda t: np.cos(t * (2. * np.pi / 5))
-            )
+            "hour_sin": hour.apply(lambda h: np.sin(h * (2. * np.pi / 24))),
+            "hour_cos": hour.apply(lambda h: np.cos(h * (2. * np.pi / 24))),
+            "weekday_sin": self.weekday_.apply(lambda d: np.sin(d * (2. * np.pi / 7))),
+            "weekday_cos": self.weekday_.apply(lambda d: np.cos(d * (2. * np.pi / 7))),
+            "timeofday_sin": self.time_of_day_.apply(lambda t: np.sin(t * (2. * np.pi / 5))),
+            "timeofday_cos": self.time_of_day_.apply(lambda t: np.cos(t * (2. * np.pi / 5)))
         })
         self.cyclic_features_ = new_frame.columns.to_list()
         self.data = pd.concat([self.data, new_frame], axis=1)
         return self
 
     def add_interaction_features(self, datetime=True, climate=False):
-    """
-    Add interaction features to the dataset based on specified options.
-
-    This method can add interaction features derived from datetime components (hour, minute,
-    weekday) and microclimate measurements (temperature and humidity pairs, temperature and
-    windspeed). Interaction features are combinations of two or more features that may provide
-    additional predictive power to machine learning models.
-
-    Parameters:
-        datetime (bool, optional): If True, adds datetime interaction features. Default is True.
-        climate (bool, optional): If True, adds climate interaction features. Default is False.
-
-    Returns:
-        DataEnhancer: The instance itself for method chaining.
-    """
+        """
+        Add interaction features to the dataset based on specified options.
+    
+        This method can add interaction features derived from datetime components (hour,
+        minute, weekday) and microclimate measurements (temperature and humidity pairs,
+        temperature and windspeed).
+    
+        Parameters:
+            datetime (bool, optional): If True, adds datetime interaction features. Default
+                is True.
+            climate (bool, optional): If True, adds climate interaction features. Default
+                is False.
+    
+        Returns:
+            DataEnhancer: The instance itself for method chaining.
+        """
         new_frame = pd.DataFrame()
         
         if datetime:
