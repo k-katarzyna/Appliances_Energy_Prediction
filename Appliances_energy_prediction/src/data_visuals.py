@@ -6,7 +6,6 @@ from pandas.tseries.frequencies import to_offset
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
-
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 from .utils import scale_annotation
@@ -185,7 +184,7 @@ def appliances_vs_lights_plot(appliances, lights):
     plt.show()
 
 
-def time_series_decomposition(result_day, result_week):
+def time_series_decomposition(result_day, result_week, name):
     """
     Visualize the time series decomposition into trend, seasonality, and residuals.
 
@@ -199,12 +198,13 @@ def time_series_decomposition(result_day, result_week):
             at a daily frequency.
         result_week (statsmodels.tsa.seasonal.DecomposeResult): The decomposition result
             at a weekly frequency.
+        name (str): Name of column to use in chart suptitle.
 
     Returns:
         None: This function plots the decomposition results and does not return any value.
     """
     fig, axes = plt.subplots(4, 1, figsize=(20, 12), sharex=True)
-    fig.suptitle("Time series decomposition", fontsize=20)
+    fig.suptitle(f"{name} decomposition", fontsize=20)
     
     sns.lineplot(data=result_day.trend, ax=axes[0])
     axes[0].legend(["Trend (day)"])
@@ -242,11 +242,9 @@ def autocorrelation_plot(time_series, lags):
     plt.subplot(221)
     plot_acf(time_series, ax=plt.gca(), lags=lags)
     plt.title(f"ACF for {time_series.name}")
-    plt.ylim(-0.5, 1)
     plt.subplot(222)
     plot_pacf(time_series, ax=plt.gca(), lags=lags)
     plt.title(f"PACF for {time_series.name}")
-    plt.ylim(-0.5, 1)
     plt.tight_layout()
     plt.show()
     
