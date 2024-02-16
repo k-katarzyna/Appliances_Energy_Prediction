@@ -1,5 +1,4 @@
-import os
-from datetime import date
+from itertools import product
 
 import numpy as np
 import pandas as pd
@@ -7,6 +6,7 @@ from holidays.countries import Belgium
 from holidays.constants import BANK, PUBLIC
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import FunctionTransformer
 
 
 class DataEnhancer:
@@ -125,7 +125,7 @@ class DataEnhancer:
                                                np.where(high, 1, 0)))
         return self
         
-    def mark_empty_home_days(self, max_usage_threshold=250):
+    def mark_empty_house_days(self, max_usage_threshold=250):
         """
         Mark days when the house is likely empty based on analysis and assumptions
         regarding energy consumption patterns.
@@ -140,16 +140,17 @@ class DataEnhancer:
         grouped = self.data.groupby("day_of_year")["Appliances"].max()
         empty_home_days = grouped[grouped <= max_usage_threshold].index
         
-        self.data["is_empty_home"] = np.where(self.data
-                                              .day_of_year
-                                              .isin(empty_home_days), 1, 0)
+        self.data["is_empty_house"] = np.where(self.data
+                                               .day_of_year
+                                               .isin(empty_home_days), 1, 0)
         return self
 
-    def add_lagged_features(self, lags, return_new=False):
+    def add_lagged_features(self, features, lags, return_new=False):
         """
         Add lagged features to the dataset.
 
         Parameters:
+            features (list of strings): The list of feature names.
             lags (list of int): The list of lag periods.
             return_new (bool): If True, returns a new DataFrame with added features,
                 otherwise updates the instance's data.
@@ -160,11 +161,11 @@ class DataEnhancer:
         """        
         modified_data = self.data.copy()
         
-        lagged_columns = [modified_data["Appliances"]
+        lagged_columns = [modified_data[feature]
                           .shift(lag)
-                          .rename(f"lag_{lag}") 
-                          for lag in lags]
-        
+                          .rename(f"lag_{feature}_{lag}") 
+                          for feature, lag in product(features, lags)]
+
         modified_data = pd.concat([modified_data] + lagged_columns, axis=1)
     
         if return_new:
@@ -173,11 +174,12 @@ class DataEnhancer:
             self.data = modified_data
             return self
 
-    def add_moving_average(self, windows, return_new=False):
+    def add_moving_average(self, features, windows, return_new=False):
         """
         Add moving average calculations to the dataset.
 
         Parameters:
+            features (list of strings): The list of feature names.
             windows (list of int): The list of window sizes for moving averages.
             return_new (bool): If True, returns a new DataFrame with added features,
                 otherwise updates the instance's data.
@@ -190,8 +192,8 @@ class DataEnhancer:
         
         moving_av_columns = [modified_data["Appliances"]
                              .rolling(window=window_size).mean()
-                             .rename(f"moving_av_{window_size}") 
-                             for window_size in windows]
+                             .rename(f"mov_av_{feature}_{window_size}") 
+                             for feature, window_size in product(features, windows)]
         
         modified_data = pd.concat([modified_data] + moving_av_columns, axis=1)
         
@@ -201,11 +203,12 @@ class DataEnhancer:
             self.data = modified_data
             return self
 
-    def add_moving_sum(self, windows, return_new=False):
+    def add_moving_sum(self, features, windows, return_new=False):
         """
         Add moving sum calculations to the dataset.
 
         Parameters:
+            features (list of strings): The list of feature names.
             windows (list of int): The list of window sizes for moving sums.
             return_new (bool): If True, returns a new DataFrame with added features,
                 otherwise updates the instance's data.
@@ -218,11 +221,11 @@ class DataEnhancer:
         
         moving_sum_columns = [modified_data["Appliances"]
                              .rolling(window=window_size).sum()
-                             .rename(f"moving_sum_{window_size}") 
-                             for window_size in windows]
+                             .rename(f"mov_sum_{feature}_{window_size}") 
+                             for feature, window_size in product(features, windows)]
         
         modified_data = pd.concat([modified_data] + moving_sum_columns, axis=1)
-        
+    
         if return_new:
             return modified_data.dropna()
         else:
@@ -237,40 +240,6 @@ class DataEnhancer:
             DataEnhancer: The instance itself for method chaining.
         """
         self.data.dropna(inplace=True)
-        return self
-
-    def add_cyclic_features(self):
-        """
-        Add cyclic features to the dataset to capture the cyclical nature of
-        time-related variables.
-    
-        This method computes and adds sinusoidal and cosinusoidal transformations
-        for hours, weekdays and time of day to the dataset. Those could help machine
-        learning models to capture the cyclical patterns within time-related data.
-    
-        Returns:
-            DataEnhancer: The instance itself for method chaining.
-        """
-        hour = self.data.hour
-        self.weekday_ = pd.Series(self.data.index.dayofweek,
-                                  index=self.data.index)
-        time_of_day_mapping = {"night": 0,
-                               "morning": 1,
-                               "forenoon": 2,
-                               "afternoon": 3,
-                               "evening": 4}
-        self.time_of_day_ = self.data.time_of_day.map(time_of_day_mapping)
-        
-        new_frame = pd.DataFrame({
-            "hour_sin": hour.apply(lambda h: np.sin(h * (2. * np.pi / 24))),
-            "hour_cos": hour.apply(lambda h: np.cos(h * (2. * np.pi / 24))),
-            "weekday_sin": self.weekday_.apply(lambda d: np.sin(d * (2. * np.pi / 7))),
-            "weekday_cos": self.weekday_.apply(lambda d: np.cos(d * (2. * np.pi / 7))),
-            "timeofday_sin": self.time_of_day_.apply(lambda t: np.sin(t * (2. * np.pi / 5))),
-            "timeofday_cos": self.time_of_day_.apply(lambda t: np.cos(t * (2. * np.pi / 5)))
-        })
-        self.cyclic_features_ = new_frame.columns.to_list()
-        self.data = pd.concat([self.data, new_frame], axis=1)
         return self
 
     def add_interaction_features(self, datetime=True, climate=False):
@@ -291,12 +260,20 @@ class DataEnhancer:
             DataEnhancer: The instance itself for method chaining.
         """
         new_frame = pd.DataFrame()
+        time_of_day_mapping = {"night": 0,
+                               "morning": 1,
+                               "forenoon": 2,
+                               "afternoon": 3,
+                               "evening": 4}
+        time_of_day = self.data.time_of_day.map(time_of_day_mapping).astype(int)
+        weekday = pd.Series(self.data.index.dayofweek,
+                            index=self.data.index)
         
         if datetime:
             datetime_frame = pd.DataFrame({
                 "hour_min": self.data.hour + self.data.minute / 60,
-                "weekday_hour": (self.weekday_ + 1) * (self.data.hour + 1),
-                "weekday_timeofday": (self.weekday_ + 1) * (self.time_of_day_ + 1)
+                "weekday_hour": (weekday + 1) * (self.data.hour + 1),
+                "weekday_timeofday": (weekday + 1) * (time_of_day + 1)
             })
             new_frame = pd.concat([new_frame, datetime_frame], axis=1)
 
@@ -340,6 +317,7 @@ class AnomaliesMarker(BaseEstimator, TransformerMixin):
                 constructor.
         """        
         self.model = IsolationForest(n_jobs=-1, random_state=42, **kwargs)
+        self.input_features = None
 
     def fit(self, X, y=None):
         """
@@ -353,6 +331,7 @@ class AnomaliesMarker(BaseEstimator, TransformerMixin):
             AnomaliesMarker: The instance itself.
         """        
         self.model.fit(X)
+        self.input_features = X.columns.tolist()
         return self
 
     def transform(self, X):
@@ -374,3 +353,189 @@ class AnomaliesMarker(BaseEstimator, TransformerMixin):
         X_tr["anomalies"] = np.where(preds == -1, 1, 0)
         
         return X_tr
+
+    def get_feature_names_out(self, input_features):
+        """
+        Get the names of the output features.
+        """
+        return np.array(self.input_features + ["anomalies"])
+
+
+def cyclical_feature_encoder(order_dict=None, n_values=None):
+    """
+    Create a function to encode a feature into its cyclical representation using
+    sine and cosine transformation.
+
+    This function is designed for use with FunctionTransformer. It generates sine
+    and cosine features from a given feature to capture its cyclical nature, such
+    as hour or days of the week. It supports encoding based on a specified order
+    for categorical features (`order_dict`) or directly for numerical features using
+    the total number of unique values (`n_values`).
+
+    Parameters:
+        order_dict (dict, optional): Maps categorical feature values to integers indicating
+            their order.
+        n_values (int, optional): Specifies the cycle length for numerical features.
+
+    Returns:
+        function: Encodes a feature into sine and cosine components.
+
+    Raises:
+        ValueError: If both `order_dict` and `n_values` are None.
+
+    Example:
+        # For categorical features
+        encoder = cyclical_feature_encoder(order_dict={'Mon': 0, 'Tue': 1, ...})
+        transformer = FunctionTransformer(func=encoder)
+        
+        # For numerical features
+        encoder = cyclical_feature_encoder(n_values=24)
+        transformer = FunctionTransformer(func=encoder)
+    """  
+    if order_dict:
+        n_values = len(order_dict)
+        transform_func = lambda x: np.vectorize(order_dict.get)(x)
+    elif n_values is None:
+        raise ValueError("'order_dict' (for categorical features) "
+                         "or 'n_values' (for numerical features) must be provided.")
+    else:
+        transform_func = lambda x: x
+
+    def encode_feature(feature):
+        """
+        Encode a feature into its cyclical representation using sine and cosine
+        transformation.
+        
+        This inner function applies the encoding logic.
+
+        Parameters:
+            feature (array-like): The feature to encode.
+
+        Returns:
+            np.ndarray: A two-dimensional array with sine and cosine encoded
+                cyclical features.
+        """
+        encoded = transform_func(feature)
+        
+        encoded_sin = np.sin(2. * np.pi * encoded / n_values)
+        encoded_cos = np.cos(2. * np.pi * encoded / n_values)
+        
+        return np.column_stack((encoded_sin, encoded_cos))
+    
+    return encode_feature
+
+
+def generate_output_feature_names(transformer, input_features):
+    """
+    Generate names for cyclical features ('_sin', '_cos') for FunctionTransformer.
+
+    Parameters:
+        transformer: The FunctionTransformer (unused, for compatibility).
+        input_features (list): Original feature names.
+
+    Returns:
+        list: Names with '_sin' and '_cos' suffixes for cyclical features.
+
+    Example:
+        transformer = FunctionTransformer(func=cyclical_feature_encoder(...),
+                                    feature_names_out=generate_output_feature_names)
+    """
+    return [f"{feature}_{suffix}"
+            for feature in input_features
+            for suffix in ['sin', 'cos']]
+
+
+def return_function_transformers():
+    """
+    Create and return cyclical and target transformers for feature engineering.
+
+    Returns:
+        tuple: Cyclical encoders for day of week, time of day and hour, along with
+               log and square root transformers for target variable transformation.
+    """
+    # cyclical encoding for weekdays
+    day_of_week_order = {"Monday": 0, "Tuesday": 1, "Wednesday": 2,
+                         "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
+    encode_day_of_week = cyclical_feature_encoder(order_dict=day_of_week_order)
+    day_encoder = FunctionTransformer(func=encode_day_of_week,
+                                      feature_names_out=generate_output_feature_names)
+    
+    # cyclical encoding for time of day
+    time_of_day_order = {"night": 0, "morning": 1, "forenoon": 2,
+                         "afternoon": 3, "evening": 4}
+    encode_time_of_day = cyclical_feature_encoder(order_dict=time_of_day_order)
+    time_encoder = FunctionTransformer(func=encode_time_of_day,
+                                       feature_names_out=generate_output_feature_names)
+
+    # cyclical encoding for hour
+    encode_hour = cyclical_feature_encoder(n_values=24)
+    hour_encoder = FunctionTransformer(func=encode_hour,
+                                       feature_names_out=generate_output_feature_names)
+
+    # target transformers
+    log_transformer = FunctionTransformer(func=np.log, inverse_func=np.exp)
+    sqrt_transformer = FunctionTransformer(func=np.sqrt, inverse_func=np.square)
+
+    return day_encoder, time_encoder, hour_encoder, log_transformer, sqrt_transformer
+
+
+class ColumnSelector(BaseEstimator, TransformerMixin):
+    """
+    A transformer for selecting specific columns from a DataFrame.
+
+    This class is useful in a preprocessing pipeline to select a subset of data
+    for further analysis or transformation.
+
+    Parameters:
+        columns (list of str): The names of the columns to select from the DataFrame.
+
+    Methods:
+        fit(X, y=None): Does nothing, only for compatibility with the scikit-learn
+            transformer interface.
+        transform(X): Returns the specified columns from X.
+        get_feature_names_out(): Returns selected feature names.
+    """
+
+    def __init__(self, columns=list):
+        """
+        Initialize the ColumnSelector with the names of the columns to select.
+        """
+        self.columns = columns
+        
+    def fit(self, X, y=None):
+        """
+        Fit the transformer to the data. This method doesn't do anything as column
+        selection does not require fitting.
+
+        Parameters:
+            X (pd.DataFrame): Data to fit.
+            y (ignored): Not used, present here for API consistency by convention.
+
+        Returns:
+            self: The instance itself.
+        """
+        return self
+    
+    def transform(self, X):
+        """
+        Transform the data by selecting the specified columns.
+
+        Parameters:
+            X (pd.DataFrame): The input data to transform.
+
+        Returns:
+            DataFrame: A DataFrame containing only the specified columns from the input data.
+        """
+        return X[self.columns]
+
+    def get_feature_names_out(self, input_features=None):
+        """
+        Get the names of the output features.
+    
+        This method returns the names of the features that have been selected for processing.
+        It is useful for understanding which features are being passed through the pipeline.
+    
+        Returns:
+            np.ndarray: An array of selected feature names.
+        """
+        return np.array(self.columns)
