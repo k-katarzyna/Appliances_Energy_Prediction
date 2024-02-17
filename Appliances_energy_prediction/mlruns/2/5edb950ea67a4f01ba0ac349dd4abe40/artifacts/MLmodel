@@ -1,0 +1,47 @@
+artifact_path: ''
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.10.13
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.3.2
+mlflow_version: 2.9.2
+model_size_bytes: 4204258
+model_uuid: ec2f02b0297e44d990dd4bf9dfe49771
+run_id: 5edb950ea67a4f01ba0ac349dd4abe40
+signature:
+  inputs: '[{"type": "double", "name": "T9"}, {"type": "double", "name": "day_of_year"},
+    {"type": "double", "name": "hour_cos"}, {"type": "double", "name": "Appliances"},
+    {"type": "double", "name": "weekday_hour"}, {"type": "double", "name": "mov_av_lights_2"},
+    {"type": "double", "name": "RH_out"}, {"type": "double", "name": "T3"}, {"type":
+    "double", "name": "T5"}, {"type": "double", "name": "mov_av_Appliances_144"},
+    {"type": "double", "name": "hour_min"}, {"type": "float", "name": "day_of_week_Monday"},
+    {"type": "double", "name": "day_of_week_cos"}, {"type": "double", "name": "mov_sum_Appliances_72"},
+    {"type": "double", "name": "mov_av_lights_144"}, {"type": "double", "name": "mov_sum_Appliances_144"},
+    {"type": "double", "name": "T4"}, {"type": "float", "name": "day_of_week_Tuesday"},
+    {"type": "double", "name": "time_of_day_cos"}, {"type": "double", "name": "mov_sum_Appliances_3"},
+    {"type": "float", "name": "day_of_week_Friday"}, {"type": "double", "name": "mov_sum_lights_6"},
+    {"type": "double", "name": "mov_av_Appliances_18"}, {"type": "double", "name":
+    "mov_av_Appliances_6"}, {"type": "double", "name": "lights"}, {"type": "double",
+    "name": "hour_sin"}, {"type": "double", "name": "week_of_year"}, {"type": "double",
+    "name": "is_weekend"}, {"type": "double", "name": "mov_av_lights_72"}, {"type":
+    "long", "name": "weekday_timeofday"}, {"type": "double", "name": "mov_av_Appliances_2"},
+    {"type": "double", "name": "time_of_day_sin"}, {"type": "double", "name": "mov_sum_lights_144"},
+    {"type": "double", "name": "mov_av_lights_6"}, {"type": "double", "name": "mov_sum_lights_2"},
+    {"type": "double", "name": "Press_mm_hg"}, {"type": "double", "name": "RH_9"},
+    {"type": "double", "name": "is_empty_house"}, {"type": "double", "name": "Windspeed"},
+    {"type": "double", "name": "RH_3"}, {"type": "double", "name": "mov_sum_lights_3"},
+    {"type": "double", "name": "mov_av_Appliances_3"}, {"type": "float", "name": "day_of_week_Saturday"},
+    {"type": "double", "name": "day_of_week_sin"}, {"type": "double", "name": "mov_av_lights_3"},
+    {"type": "double", "name": "mov_av_lights_18"}, {"type": "double", "name": "mov_sum_Appliances_18"}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+utc_time_created: '2024-02-16 22:49:57.473480'

@@ -3,14 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
-from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.linear_model import LinearRegression
 
 from .utils import return_train_test_data
-
 
 plt.rcParams["font.size"] = 14.0
 plt.rcParams["axes.spines.top"] = False
@@ -42,15 +41,16 @@ def prediction_benchmarks(data, n_test):
     
     means = train.groupby(["day_of_week", "hour", "minute"])["Appliances_24"].mean()
     historical_means = test.apply(lambda row:
-                                    means.loc[(row["day_of_week"], row["hour"], row["minute"])], 
-                                    axis=1)
+                                  means.loc[(row["day_of_week"], row["hour"], row["minute"])], 
+                                  axis=1)
     
     week_before = data.Appliances_24.shift(144*7).iloc[-n_test:]
 
     X_train, X_test, y_train, y_test = return_train_test_data(data,
                                                               n_test,
                                                               xy=True,
-                                                              ohe_drop_first=True)
+                                                              ohe=True,
+                                                              drop_first=True)
     
     model = TransformedTargetRegressor(make_pipeline(MinMaxScaler(),
                                                      LinearRegression()),
@@ -72,15 +72,13 @@ def prediction_benchmarks(data, n_test):
         ax.plot(test.index, y_test, label="y_test", color="tab:blue")
         ax.plot(test.index, preds, label=title, color="red")
 
-        mape = mean_absolute_percentage_error(y_test, preds)
         mae = mean_absolute_error(y_test, preds)
         rmse = mean_squared_error(y_test, preds, squared=False)
+        medae = median_absolute_error(y_test, preds)
         
         ax.legend([
             "y_test",
-            f"{title}: RMSE {rmse:.0f}, "
-            f"MAE {mae:.0f}, "
-            f"MAPE {mape:.2f}"
+            f"{title}: RMSE {rmse:.0f}, MAE {mae:.0f}, MedAE {medae:.0f}"
         ])
         
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
@@ -143,93 +141,6 @@ def time_series_split(tscv, X_train):
     plt.show()
 
 
-def scores_for_weights(data):
-    """
-    Visualize the impact of different weights on RMSE and MAPE scores for training
-    and testing datasets.
-
-    This function filters the input data for specific weight values (1, 5, 10), then
-    prepares and displays two bar plots: one for the Root Mean Squared Error (RMSE)
-    and the other for the Mean Absolute Percentage Error (MAPE). These plots compare
-    the performance metrics for training and testing datasets across the selected weights.
-
-    Parameters:
-        data (pd.DataFrame): A DataFrame containing model parameters and metrics, including
-            weights, RMSE for training and testing datasets and MAPE for training and testing
-            datasets.
-
-    Returns:
-        None: This function visualizes the metrics comparison and does not return any value.
-
-    Note:
-        The input DataFrame should have the following columns:
-        - params.weight: The weight parameter values.
-        - metrics.best_rmse_train: The average of best RMSE scores on the training dataset.
-        - metrics.best_rmse: The average of best RMSE scores on the testing dataset.
-        - metrics.best_mape_train: The average of best MAPE scores on the training dataset.
-        - metrics.best_mape: The average of best MAPE scores on the testing dataset.
-
-        The function filters the data for weights 1, 5, and 10 and visualizes the RMSE and MAPE
-        scores for these weights to analyze how the weight parameter affects model performance.
-    """
-    data = data.copy()    
-    data["params.weight"] = data["params.weight"].astype(int)
-    data = data[data["params.weight"].isin([1, 5, 10])]
-    
-    melted_rmse = data.melt(id_vars="params.weight", 
-                            value_vars=["metrics.best_rmse_train", "metrics.best_rmse"],
-                            var_name="Type", value_name="RMSE")
-    melted_rmse["Type"] = melted_rmse["Type"].map({"metrics.best_rmse_train": "Train",
-                                                   "metrics.best_rmse": "Test"})
-    
-    melted_mape = data.melt(id_vars="params.weight", 
-                            value_vars=["metrics.best_mape_train", "metrics.best_mape"],
-                            var_name="Type", value_name="MAPE")
-    melted_mape["Type"] = melted_mape["Type"].map({"metrics.best_mape_train": "Train",
-                                                   "metrics.best_mape": "Test"})
-    
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 4))
-    plt.suptitle("Average score for train and test by weight for high values")
-    
-    sns.barplot(x="params.weight",
-                y="RMSE",
-                hue="Type",
-                data=melted_rmse,
-                palette="Paired",
-                ax=ax1)
-    ax1.set_ylabel("RMSE")
-    ax1.set_ylim(85, 105)
-    ax1.set_title("RMSE")
-    
-    sns.barplot(x="params.weight",
-                y="MAPE", hue="Type",
-                data=melted_mape,
-                palette="Paired",
-                ax=ax2)
-    ax2.set_ylabel("MAPE")
-    ax2.set_ylim(0.3, 0.8)
-    ax2.set_title("MAPE")
-
-    for ax in [ax1, ax2]:
-            ax.set_xlabel("Weight")
-            ax.grid(True,
-                    which="major",
-                    linestyle="-",
-                    linewidth="0.4",
-                    alpha=0.3)
-            ax.minorticks_on()
-            ax.grid(True,
-                    which="minor",
-                    linestyle=":",
-                    linewidth="0.2",
-                    axis="y",
-                    alpha=0.6)
-            ax.legend(loc="upper left")
-    
-    plt.tight_layout()
-    plt.show()
-
-
 def diagnose_errors(y_test, y_pred):
     """
     Visualize the prediction errors in multiple ways to diagnose model performance.
@@ -272,7 +183,7 @@ def diagnose_errors(y_test, y_pred):
     plt.show()
 
 
-def evaluate_model(X_test, y_test, model, include_diagnostics=True):
+def evaluate_model(X_test, y_test, model, regressor, include_diagnostics=True):
     """
     Evaluate a given model's performance on test data and visualize the results.
 
@@ -291,11 +202,12 @@ def evaluate_model(X_test, y_test, model, include_diagnostics=True):
     Returns:
         None: This function plots the evaluation results and does not return any value.
     """
-    name = model.regressor_.named_steps["model"].__class__.__name__
+    name = regressor.__class__.__name__
     y_pred = model.predict(X_test)
-    mape = mean_absolute_percentage_error(y_test, y_pred)
     rmse = mean_squared_error(y_test, y_pred, squared=False)
     mae = mean_absolute_error(y_test, y_pred)
+    medae = median_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
     
     plt.figure(figsize=(20,5))
     plt.plot(X_test.index,
@@ -304,7 +216,7 @@ def evaluate_model(X_test, y_test, model, include_diagnostics=True):
     plt.plot(X_test.index,
              y_pred,
              color="red",
-             label=f"prediction, RMSE {rmse:.0f}, MAE {mae:.0f}, MAPE {mape:.2f}")
+             label=f"prediction, RMSE {rmse:.1f}, MAE {mae:.0f}, MedAE {medae:.0f}, R2 {r2:.2f}")
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%a'))
     plt.title(f"Best model's ({name}) performance (on test data)")
     plt.legend()
