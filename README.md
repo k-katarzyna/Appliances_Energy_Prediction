@@ -1,14 +1,16 @@
 ## This project is in progress...
-This project aims to develop a predictive model using multivariate time series analysis.\
+This project aims to develop a predictive model using multivariate time series analysis.
 Done so far:
-1. Exploratory data analysis (main insights presented in the *0_data_exploration.ipynb* notebook)
-2. Determination of reference points (see *1_experiments.ipynb* notebook) and initial tests(not presented)
-3. Experiments (see *1_experiments.ipynb* notebook)
-   * Feature engineering
-     - lagged and window features for target variable and others
-     - interaction features for weather, house microclimate and datetime attributes
-     - recursive feature elimination
-   * Sample weighting
+1. Exploratory data analysis (main insights presented in the *0_data_exploration.ipynb* notebook).
+2. Determination of reference points and initial tests (see *1_experiments.ipynb* notebook; initial tests not presented).
+3. Experiments (detailed in the *1_experiments.ipynb* notebook), including:
+   * Feature engineering:
+     - creation of lagged and windowed features for the target variable and others,
+     - development of interaction features for weather, house microclimate and datetime attributes,
+     - implementation of recursive feature elimination.
+   * Sample weighting.
+
+Experiments are tracked with MLflow, using a local SQLite database as the backend (*mlruns.db* file). Examples of MLflow run artifacts can be found in the *mlruns/* folder, specifically those of the best model so far. Utilities designed for this project are located in the *src* module.
 
 ## The dataset
 The dataset documents appliance energy usage in a low-energy building in Belgium. The house, with a floor space of 280 m2, is equipped with a heat pump for water heating, a fireplace heating system and a heat recovery ventilation system. It is inhabited by four occupants (two adults and two teenagers), with one adult working from home. The dataset includes information on the temperature and relative humidity levels in various rooms of the house, as well as outside, along with data on lighting energy usage. The data at the house was collected at 10-minute intervals, using M-BUS energy counters for appliances and lights data, and ZigBee sensor network for microclimate information. Additionally, weather data from the nearest weather station was integrated into this experimental dataset, synchronized by date and time. Since the data from the station were available hourly, linear interpolation was applied to fill in the gaps, maintaining the 10-minute interval consistency. To evaluate regression models and identify non-predictive attributes, the dataset also includes two random variables [1, 2].
