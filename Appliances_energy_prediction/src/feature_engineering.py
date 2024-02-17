@@ -26,18 +26,17 @@ class DataEnhancer:
         drop_features(features): Drops specified columns from the dataset.
         mark_high_values(quantile_0_1, quantile_1_2): Marks high value records in
             the dataset.
-        mark_empty_home_days(max_usage_threshold): Marks days with minimal energy
+        mark_empty_house_days(max_usage_threshold): Marks days with minimal energy
             consumption.
         add_lagged_features(lags, return_new): Adds lagged features to the dataset.
         add_moving_average(windows, return_new): Adds moving average calculations to
             the dataset.
         add_moving_sum(windows, return_new): Adds moving sum calculations to the dataset.
-        add_cyclic_features(): Adds cyclic features for hours, weekdays and time of day.
         add_interaction_features(datetime, climate): Adds datetime and microclimate
             interaction features.
         dropna(): Drops rows with missing values from the dataset.
     """
-
+    
     def __init__(self, data):
         """
         Initialize the DataEnhancer with the provided dataset.
@@ -306,6 +305,7 @@ class AnomaliesMarker(BaseEstimator, TransformerMixin):
     Methods:
         fit(X, y=None): Fits the Isolation Forest model on the dataset.
         transform(X): Transforms the dataset by marking the anomalies.
+        get_feature_names_out(input_features): Returns output column names.
     """
     
     def __init__(self, **kwargs):

@@ -188,16 +188,18 @@ def evaluate_model(X_test, y_test, model, regressor, include_diagnostics=True):
     Evaluate a given model's performance on test data and visualize the results.
 
     This function uses the provided model to predict values based on X_test, then
-    calculates mean absolute percentage error (MAPE), root mean squared error (RMSE)
-    and mean absolute error (MAE). It plots the actual vs predicted values and also
-    calls the diagnose_errors function to further analyze the prediction errors.
+    calculates root mean squared error (RMSE), mean absolute error (MAE), median
+    absolute error (MedAE) and r2 score (R2). It plots the actual vs predicted values
+    and also calls the diagnose_errors function to further analyze the prediction errors.
 
     Parameters:
         X_test (pd.DataFrame): The test data features.
         y_test (array-like): The actual values for the test data.
-        model (fitted on train data ML model object): The model to be evaluated.
-        include_diagnostics(bool, optional): If set to True, includes diagnostic
-            charts for prediction errors. Default is True.
+        model: Pipeline or fitted model object used for making predictions.
+        regressor: The regressor object within `model`, used solely for extracting its
+            class name for labeling purposes.
+        include_diagnostics (bool, optional): If True, includes diagnostic plots for prediction
+            errors. Defaults to True.
 
     Returns:
         None: This function plots the evaluation results and does not return any value.
