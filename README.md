@@ -1,10 +1,11 @@
-## This project is in progress...
-This project aims to develop a predictive model using multivariate time series.
-Done so far:
+## Project structure
+This project aims to develop a predictive model using multivariate time series.\
+It is organized as follows:
+
 1. Exploratory data analysis (main insights presented in the *0_data_exploration.ipynb* notebook).
-2. Determination of reference points and initial tests (see *1_experiments.ipynb* notebook; initial tests not presented).
-3. Experiments (detailed in the *1_experiments.ipynb* notebook), including:
-   * Feature engineering:
+2. Experiments (detailed in the *1_experiments.ipynb* notebook)
+    * Determination of reference points.
+    * Feature engineering:
      - time-based features, with selected features undergoing various transformations,
      - binary features to signify specific conditions identified through data analysis,
      - lagged and windowed features for the target variable and others,
@@ -12,8 +13,8 @@ Done so far:
      - interaction features for weather and house microclimate,
      - recursive feature elimination.
    * Sample weighting.
-
-Experiments are tracked with MLflow, using a local SQLite database as the backend (*mlruns.db* file). Examples of MLflow run artifacts can be found in the *mlruns/* folder, specifically those of the best model so far. Utilities designed for this project are located in the *src* module.
+3. Utilities designed for this project are located in the *src* module.
+4. Experiments were tracked with MLflow, using a local SQLite database as the backend (*mlruns.db* file). Examples of MLflow run artifacts can be found in the *mlruns/* folder, specifically those of the best model so far. 
 
 ## The dataset
 The dataset documents appliance energy usage in a low-energy building in Belgium. The house, with a floor space of 280 m2, is equipped with a heat pump for water heating, a fireplace heating system and a heat recovery ventilation system. It is inhabited by four occupants (two adults and two teenagers), with one adult working from home. The dataset includes information on the temperature and relative humidity levels in various rooms of the house, as well as outside, along with data on lighting energy usage. The data at the house was collected at 10-minute intervals, using M-BUS energy counters for appliances and lights data, and ZigBee sensor network for microclimate information. Additionally, weather data from the nearest weather station was integrated into this experimental dataset, synchronized by date and time. Since the data from the station were available hourly, linear interpolation was applied to fill in the gaps, maintaining the 10-minute interval consistency. To evaluate regression models and identify non-predictive attributes, the dataset also includes two random variables [1, 2].
@@ -33,6 +34,10 @@ The model should be primarily accurate, with operational speed being a secondary
 Initial approach for model evaluation:\
 Assuming the goal is to avoid large errors that could translate into higher associated costs, e.g., either from storing energy or unnecessary use of energy from the grid, the RMSE metric will be used as the primary measure. This ensures that larger errors are given more weight in the evaluation of the model, offering a clearer sense of the error magnitude than MSE, as it presents the result in the same units as the original values.\
 Additionally, the following metrics will be monitored: MAE, to ascertain the average magnitude of errors; MedAE, which is useful because the target variable exhibits pronounced skewness, providing insight into model performance with a reduced influence from outliers; and R2 score, to assess the proportion of variance explained by the model.
+
+## Future work
+The experiments conducted thus far have not produced satisfactory results (a detailed destription can be found at the end of the *1_experiments.ipynb* notebook). The short timeframe of the data and its significant level of noise are considered to be the main contributing factors. It seems that data from a longer period would be necessary to better capture patterns.\
+However, even with these limited data, there could still be potential for improvement, such as exploring different methods of data transformation or utilizing algorithms specifically tailored to work with sequential data, such as LSTM neural networks, 1-dimensional CNNs, or pre-trained models designed for time series analysis. Additionally, redefining the target variable may be beneficial. It may also be advantageous to reassess the method of model evaluation, possibly by employing different metrics, in order to potentially achieve different results.
 
 ## References
 1. Luis M. Candanedo, Veronique Feldheim, Dominique Deramaix, Data driven prediction models of energy use of appliances in a low-energy house, Energy and Buildings, Volume 140, 1 April 2017, Pages 81-97, ISSN 0378-7788. [Web Link](https://www.sciencedirect.com/science/article/abs/pii/S0378778816308970?via%3Dihub) (accessed 23.01.24)
