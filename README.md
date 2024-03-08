@@ -1,17 +1,18 @@
+This project aims to develop a predictive model using multivariate time series.
+
 ## Project structure
-This project aims to develop a predictive model using multivariate time series.\
-It is organized as follows:
+The project is organized as follows:
 
 1. Exploratory data analysis (main insights presented in the *0_data_exploration.ipynb* notebook).
 2. Experiments (detailed in the *1_experiments.ipynb* notebook)
     * Determination of reference points.
     * Feature engineering:
-     - time-based features, with selected features undergoing various transformations,
-     - binary features to signify specific conditions identified through data analysis,
-     - lagged and windowed features for the target variable and others,
-     - marking anomalies detected by IsolationForest,
-     - interaction features for weather and house microclimate,
-     - recursive feature elimination.
+        - time-based features, with selected features undergoing various transformations,
+        - binary features to signify specific conditions identified through data analysis,
+        - lagged and windowed features for the target variable and others,
+        - marking anomalies detected by IsolationForest,
+        - interaction features for weather and house microclimate,
+        - recursive feature elimination.
    * Sample weighting.
 3. Utilities designed for this project are located in the *src* module.
 4. Experiments were tracked with MLflow, using a local SQLite database as the backend (*mlruns.db* file). Examples of MLflow run artifacts can be found in the *mlruns/* folder, specifically those of the best model so far. 
