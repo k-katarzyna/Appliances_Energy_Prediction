@@ -6,7 +6,7 @@ import mlflow
 @np.vectorize
 def scale_annotation(value, factor):
     """
-    Converts a numerical value to a string representation scaled down by a given
+    Convert a numerical value to a string representation scaled down by a given
     factor, with one decimal place.
     """
     return f"{value/factor:.1f}"
@@ -26,9 +26,10 @@ def return_train_test_data(data, n_test, xy=False, ohe=False, drop_first=False):
         n_test (int): The number of samples to be used in the test set.
         xy (bool, optional): If True, the function separates features and target
             and returns them separately.
-        ohe_drop_first (bool, optional): If True and xy is True, applies one-hot
-            encoding to categorical features and drops the first category to avoid
-            multicollinearity.
+        ohe (bool, optional): If True and xy is True, applies one-hot encoding to
+            categorical features.
+        drop_first (bool, optional): If True (and xy and ohe are True), it drops
+            the first category to avoid multicollinearity.
 
     Returns:
         tuple: Depending on the value of 'xy', it returns either:
@@ -60,7 +61,7 @@ def get_metrics_dict(cv_results):
     """
     Extract best scores for multiple metrics from cross-validation results.
 
-    Aggregates the best scores and corresponding scores for RMSE, MAE, MedAE and R2
+    It aggregates the best scores and corresponding scores for RMSE, MAE, MedAE and R2
     metrics, including training scores and additional corresponding scores for the model
     with the best RMSE.
 
