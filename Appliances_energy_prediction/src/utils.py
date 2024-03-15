@@ -57,6 +57,55 @@ def return_train_test_data(data, n_test, xy=False, ohe=False, drop_first=False):
         return train, test
 
 
+def model_with_params(model, model_param_grid, preprocess_grid):
+    """
+    Generate a parameter grid combining model and preprocessing parameters.
+
+    Parameters:
+        model: A machine learning model.
+        model_param_grid (dict): Grid of hyperparameters for the model.
+        preprocess_grid (dict): Grid of hyperparameters for preprocessing.
+
+    Returns:
+        tuple: A tuple containing the model and the combined parameter grid.
+    """    
+    param_grid = {
+        **model_param_grid,
+        **preprocess_grid
+    }
+    return model, param_grid
+
+
+def return_models_with_param_grids(models, models_param_grids,
+                                   for_linear_preprocessor, for_tree_preprocessor,
+                                   linear_model_names=["ElasticNet", "Ridge"]):
+    """
+    Generate a list of tuples containing models and corresponding parameter grids.
+
+    Parameters:
+        models (list): List of machine learning models.
+        models_param_grids (list): List of hyperparameter grids for each model.
+        for_linear_preprocessor (dict): Grid of preprocessing params for linear models.
+        for_tree_preprocessor (dict): Grid of preprocessing params for tree models.
+        linear_model_names (list, optional): Names of linear models.
+                                             Default=["ElasticNet", "Ridge"]
+
+    Returns:
+        list: A list of tuples, each containing a model and its parameter grid.
+    """
+    models_with_params = []
+    
+    for model, grid in zip(models, models_param_grids):
+        if model.__class__.__name__ in linear_model_names:
+            preprocess_grid = for_linear_preprocessor
+        else:
+            preprocess_grid = for_tree_preprocessor
+
+        models_with_params.append(model_with_params(model, grid, preprocess_grid))
+        
+    return models_with_params
+
+
 def get_metrics_dict(cv_results):
     """
     Extract best scores for multiple metrics from cross-validation results.
