@@ -5,7 +5,7 @@ The project is organized as follows:
 
 1. Exploratory data analysis (main insights presented in the *0_data_exploration.ipynb* notebook).
 2. Experiments (detailed in the *1_experiments.ipynb* notebook)
-    * Determination of reference points.
+    * Determination of baselines.
     * Feature engineering:
         - time-based features, with selected features undergoing various transformations,
         - binary features to signify specific conditions identified through data analysis,
@@ -15,7 +15,22 @@ The project is organized as follows:
         - recursive feature elimination.
    * Sample weighting.
 3. Utilities designed for this project are located in the *src* module.
-4. Experiments were tracked with MLflow, using a local SQLite database as the backend (*mlruns.db* file). Examples of MLflow run artifacts can be found in the *mlruns/* folder, specifically those of the best model so far. 
+4. Experiments were tracked with MLflow, using a local SQLite database as the backend (*mlruns.db* file). Examples of MLflow run artifacts can be found in the *mlruns/* folder, specifically those of the best model so far.
+
+To run the project in conda virtual environment:
+```bash
+# Recreate environment using env.yml file
+conda env create -f env.yml
+
+# Activate the environment
+conda activate energy
+
+# Install Jupyter kernel for the environment
+python -m ipykernel install --user --name=energy
+
+# Run MLflow UI on port 8080
+mlflow ui --port 8080 --backend-store-uri sqlite:///Appliances_energy_prediction/mlruns.db
+```
 
 ## The dataset
 The dataset documents appliance energy usage in a low-energy building in Belgium. The house, with a floor space of 280 m2, is equipped with a heat pump for water heating, a fireplace heating system and a heat recovery ventilation system. It is inhabited by four occupants (two adults and two teenagers), with one adult working from home. The dataset includes information on the temperature and relative humidity levels in various rooms of the house, as well as outside, along with data on lighting energy usage. The data at the house was collected at 10-minute intervals, using M-BUS energy counters for appliances and lights data, and ZigBee sensor network for microclimate information. Additionally, weather data from the nearest weather station was integrated into this experimental dataset, synchronized by date and time. Since the data from the station were available hourly, linear interpolation was applied to fill in the gaps, maintaining the 10-minute interval consistency. To evaluate regression models and identify non-predictive attributes, the dataset also includes two random variables [1, 2].
@@ -27,10 +42,10 @@ This approach differs from the original study from which the dataset was obtaine
 ## Conceptual background
 This type of model could potentially enhance Home Energy Management Systems (HEMS) for smart homes. The evolution of HEMS represents now not only systems operating according to predefined settings, there are also self-learning systems powered by AI, capable of adjusting to the routine of users, providing even greater convenience, automation, but also savings and a reduction in the carbon footprint. They aid in optimizing energy consumption, adapting to variable energy tariffs or integrating renewable energy sources like photovoltaics [3].\
 Although one can read about optimization by such systems mainly for things like air and water temperature regulation or lighting, or whether they are used in managing energy in buildings in distributed renewable energy systems and not in a single home, if the energy consumption of devices is also linked with various external factors [1] and the routine of the inhabitants, such a prediction seems interesting to test. Offering personalized insights, based not only on external factors and previous settings but also on the known routines of users, possibly this prediction could make energy management more automated if needed or just give better recommendation for using very energy-intensive devices. The proposed timeframe provides a practical opportunity to consider dynamically changing factors (such as weather conditions), allowing users to react or plan eventual actions if necessary.\
-The model should be primarily accurate, with operational speed being a secondary concern, as well as its complexity. However, it shouldn't be too complex so that end-users can understand the basis of its predictions, which may be essential in adhering to recommendations.
+The model should be primarily accurate, with operational speed being a secondary concern, as well as its complexity. However, it should preferably not be overly complex so that end-users can understand the basis of its predictions, which may be essential in adhering to recommendations.
 
 **The primary challenge** is the limited dataset duration (4.5 months), which may affect the ability to predict seasonal variations in energy usage, thereby affecting the model's forecast reliability and predictability.\
-**Another challenge** is that household behaviors cannot be entirely predicted and depend on many factors, not only those included in the data. Even included factors, like weather, cannot be entirely forecasted. Such data would also need to be regularly updated and the model should adapt to new information.
+**Another challenge** is that household behaviors cannot be entirely predicted and depend on many factors, not only those included in the data. Even included factors, like weather, cannot be entirely forecasted.
 
 Initial approach for model evaluation:\
 Assuming the goal is to avoid large errors that could translate into higher associated costs, e.g., either from storing energy or unnecessary use of energy from the grid, the RMSE metric will be used as the primary measure. This ensures that larger errors are given more weight in the evaluation of the model, offering a clearer sense of the error magnitude than MSE, as it presents the result in the same units as the original values.\
